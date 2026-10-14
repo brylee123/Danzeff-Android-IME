@@ -1,0 +1,74 @@
+# Credits and third-party notices
+
+Danzeff Android IME credits **danzel** and **Jeff Chen**, the original Danzeff keyboard authors, **geecko (Clément G)** for Danzeff-G, and **Sakya** for the Danzeff OSlib port.
+
+- [Danzeff-G](https://github.com/libcg/Danzeff-G): copyright 2006 danzel, 2006 Jeff Chen, and 2012 geecko; BSD 3-Clause. The complete original notice is in [DANZEFF-G-LICENSE.txt](licenses/DANZEFF-G-LICENSE.txt).
+- [DanzeffOSLib archive](https://github.com/PSP-Archive/DanzeffOSLib): the Android character table follows its four `modeChar` pages and PSP action ordering. Android rendering, gestures, input service and profiles are independently implemented; original PSP artwork and binaries are not bundled.
+- [Danzeff Flipper Lab](https://github.com/brylee123/Danzeff-Flipper-Lab): this project follows its licensing approach: BSD 2-Clause for new project code and preservation of the upstream BSD 3-Clause notice. Its newer Danzeff-G layout differs from this Android table: Android retains the OSlib apostrophe in the top-left symbol slot and zero at the bottom of the bottom-right numeric cell.
+- Gradle 8.11.1 wrapper: build tooling distributed under Apache 2.0 and applicable bundled notices. Full distribution LICENSE and NOTICE are preserved in `docs/licenses/GRADLE-LICENSE.txt` and `GRADLE-NOTICE.txt`. This tooling is not packaged in the APK.
+
+Original Android code is covered by the root [LICENSE](../LICENSE). Derived Danzeff layout data retains the upstream BSD 3-Clause notice. The APK includes these credits and both BSD licenses in its assets and exposes them through **Credits & licenses** in the launcher app.
+
+Attribution does not imply endorsement. The original authors' names must not be used to endorse or promote derived products without their prior written permission. Source and binary redistributions must retain the applicable copyright notices, conditions and disclaimers.
+
+
+
+ANDROID PROJECT LICENSE
+
+BSD 2-Clause License
+
+Copyright (c) 2026, Danzeff Android IME contributors
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+
+ORIGINAL DANZEFF LICENSE
+
+Copyright (c) 2006  danzel
+Copyright (c) 2006  Jeff Chen
+Copyright (c) 2012  geecko
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+3. The names of the authors may not be used to endorse or promote products
+   derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHORS ``AS IS'' AND ANY EXPRESS OR
+IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+

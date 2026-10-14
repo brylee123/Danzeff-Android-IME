@@ -27,11 +27,11 @@ import java.util.Locale;
 
 /** Quick onboarding and in-app WPM/accuracy experiment. No test text is saved. */
 public class MainActivity extends Activity {
-    private static final int BACKGROUND = 0xFF0D1721;
-    private static final int PANEL = 0xFF182935;
-    private static final int AQUA = 0xFF55D6C2;
+    private static final int BACKGROUND = 0xFF252525;
+    private static final int PANEL = 0xFF4B4B4B;
+    private static final int AQUA = 0xFFF3C35A;
     private static final int LIGHT = 0xFFF2F7F9;
-    private static final int SECONDARY = 0xFFB2C2CC;
+    private static final int SECONDARY = 0xFFDDDDDD;
     private static final String TARGET = "The quick brown fox jumps over the lazy dog.";
 
     private TextView status;
@@ -107,8 +107,33 @@ public class MainActivity extends Activity {
             InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
             if (imm != null) imm.showInputMethodPicker();
         });
-        add(layout, select, 21);
+        add(layout, select, 9);
+        Button mapping = button("Controller & keypad profiles");
+        mapping.setOnClickListener(v -> startActivity(new Intent(this, ControllerSettingsActivity.class)));
+        add(layout, mapping, 21);
 
+        Button credits = button("Credits & licenses");
+        credits.setOnClickListener(v -> {
+            try (java.io.InputStream input = getAssets().open("licenses/credits.txt")) {
+                java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+                byte[] buffer = new byte[4096];
+                int count;
+                while ((count = input.read(buffer)) != -1) bytes.write(buffer, 0, count);
+                String notices = new String(bytes.toByteArray(), java.nio.charset.StandardCharsets.UTF_8);
+                ScrollView noticeScroll = new ScrollView(this);
+                TextView noticeText = text(notices, 13, LIGHT, false);
+                noticeText.setPadding(dp(18), dp(18), dp(18), dp(18));
+                noticeText.setTextIsSelectable(true);
+                noticeScroll.setBackgroundColor(BACKGROUND);
+                noticeScroll.addView(noticeText);
+                new android.app.AlertDialog.Builder(this).setTitle("Credits & licenses")
+                        .setView(noticeScroll).setPositiveButton("Close", null).show();
+            } catch (java.io.IOException e) {
+                new android.app.AlertDialog.Builder(this).setTitle("Credits & licenses")
+                        .setMessage("License notices could not be loaded.").setPositiveButton("Close", null).show();
+            }
+        });
+        add(layout, credits, 14);
         add(layout, text("TYPING EXPERIMENT", 15, AQUA, true), 8);
         TextView target = text(TARGET, 17, LIGHT, false);
         target.setPadding(dp(14), dp(14), dp(14), dp(14));
@@ -141,7 +166,7 @@ public class MainActivity extends Activity {
         });
         add(layout, reset, 16);
 
-        add(layout, text("TWO-STEP: Select a 3×3 cell on the left, then tap the matching top, left, bottom, or right face button. You can hold the grid with one thumb while tapping a face button with the other.\n\nDIRECT TAP: Tap a quadrant of a cell to enter its character with one touch. Toggle modes using the keyboard header.\n\nGAMEPAD: Left stick or D-pad selects a cell; Y/X/A/B selects top/left/bottom/right. L1 switches letters/numbers, R1 shifts.",
+        add(layout, text("TOUCH: Touch a cell to expand it, keep your finger down, and swipe up, left, down or right. Release to type. Or tap a cell, lift your finger, then tap a character in the expanded cell. The grid resets after each character.\n\nWith a controller connected, the original grid and face-button layout remains available.\n\nGAMEPAD: Left stick selects a group; Y/X/A/B selects top/left/bottom/right. L1 switches letters/numbers; hold R1 to shift. D-pad up deletes, down inserts a new line, and left/right moves the cursor. Use Controller & keypad profiles to remap inputs and save device profiles.",
                 13, SECONDARY, false), 14);
         add(layout, text("Offline prototype. No internet permission, no typed-text logging, no predictions, and no autocorrect. Avoid entering sensitive credentials until you have personally reviewed the code.",
                 12, SECONDARY, false), 0);

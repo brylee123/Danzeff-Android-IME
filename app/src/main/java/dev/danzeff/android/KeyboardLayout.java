@@ -1,3 +1,7 @@
+/* Danzeff layout lineage: copyright (c) 2006 danzel, 2006 Jeff Chen, 2012 geecko.
+ * SPDX-License-Identifier: BSD-3-Clause
+ * Full notice: docs/licenses/DANZEFF-G-LICENSE.txt. OSlib port credit: Sakya.
+ */
 package dev.danzeff.android;
 
 /**
