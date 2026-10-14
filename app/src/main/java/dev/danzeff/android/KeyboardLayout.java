@@ -17,6 +17,7 @@ public final class KeyboardLayout {
     public static final int UPPER = 1;
     public static final int DIGITS = 2;
     public static final int SYMBOLS = 3;
+    public static final int EXTRA_SYMBOLS = 4;
     public static final int TOP = 0;
     public static final int LEFT = 1;
     public static final int BOTTOM = 2;
@@ -42,6 +43,11 @@ public final class KeyboardLayout {
             {{"'","(",".",")"},{"\"","<","'",">"},{"-","[","_","]"}},
             {{"!","{","?","}"},{"\b",""," ",""},{"+","\\","=","/"}},
             {{":","@",";","#"},{"~","$","`","%"},{"*","^","|","&"}}
+        },
+        { // Danzeff Flipper Lab convenience page (BSD-2-Clause; docs/licenses).
+            {{"@","#","$","%"},{"^","&","*","+"},{"-","_","=","~"}},
+            {{"<","[","]",">"},{"\b","0"," ","."},{"\\","/","|",":"}},
+            {{"!","?",",",";"},{"'","\"","`","("},{")","{","}","_"}}
         }
     };
 

@@ -24,6 +24,7 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
     private DanzeffKeyboardView keyboard;
     private FrameLayout keyboardContainer;
     private boolean numbers;
+    private boolean extraSymbols;
     private boolean shift;
     private ControllerProfiles profiles;
     private final ControllerInput controllerInput = new ControllerInput();
@@ -79,7 +80,7 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
     @Override public void onStartInputView(EditorInfo info, boolean restarting) {
         super.onStartInputView(info, restarting);
         refreshAppearance();
-        numbers = false;
+        numbers = false; extraSymbols = false;
         shift = false;
         row = 1;
         col = 1;
@@ -113,8 +114,11 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
         return false;
     }
 
+    int currentLayer() {
+        return extraSymbols ? KeyboardLayout.EXTRA_SYMBOLS : KeyboardLayout.layer(numbers, shift || !heldShift.isEmpty());
+    }
     private void syncView() {
-        if (keyboard != null) keyboard.updateState(KeyboardLayout.layer(numbers, shift || !heldShift.isEmpty()), row, col);
+        if (keyboard != null) keyboard.updateState(currentLayer(), row, col);
     }
 
     private void refreshControllerLayout() {
@@ -141,7 +145,7 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
     }
 
     @Override public void onChooseSlot(int slot) {
-        String text = KeyboardLayout.at(KeyboardLayout.layer(numbers, shift || !heldShift.isEmpty()), row, col, slot);
+        String text = KeyboardLayout.at(currentLayer(), row, col, slot);
         if (text.isEmpty()) return;
         if ("\b".equals(text)) {
             deleteCharacter();
@@ -168,8 +172,23 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
         }
         commit("\n");
     }
-    @Override public void onShift() { shift = !shift; syncView(); }
-    @Override public void onNumbers() { numbers = !numbers; shift = false; syncView(); }
+    @Override public void onShift() {
+        if (numbers) {
+            if (extraSymbols) { extraSymbols = false; shift = false; }
+            else if (shift) { extraSymbols = true; shift = false; }
+            else shift = true;
+        } else shift = !shift;
+        if (keyboard != null) keyboard.resetTouchSelection();
+        syncView();
+    }
+    public void onSymbols() { numbers = true; shift = true; extraSymbols = false; resetPage(); }
+    public void onExtraSymbols() { numbers = true; shift = false; extraSymbols = true; resetPage(); }
+    private void resetPage() {
+        row = col = 1;
+        if (keyboard != null) keyboard.resetTouchSelection();
+        syncView();
+    }
+    @Override public void onNumbers() { numbers = !numbers; extraSymbols = false; shift = false; resetPage(); }
     @Override public void onSwitchKeyboard() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P || !switchToNextInputMethod(false)) {
             InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -245,6 +264,8 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
             case "right": onChooseGroup(row, col + 1); break;
             case "shift": onShift(); break;
             case "numbers": onNumbers(); break;
+            case "symbols": onSymbols(); break;
+            case "extra_symbols": onExtraSymbols(); break;
             case "space": onSpace(); break;
             case "delete": onBackspace(); break;
             case "enter": onEnter(); break;

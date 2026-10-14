@@ -201,7 +201,7 @@ public final class DanzeffKeyboardView extends View {
                 canvas.drawOval(cx - radius * .45f, cy - radius, cx + radius * .45f, cy + radius, paint);
                 canvas.drawLine(cx - radius, cy, cx + radius, cy, paint); paint.setStyle(Paint.Style.FILL);
             } else {
-                String text = i == 0 ? (layer >= 2 ? "ABC" : "?123") : i == 1 && layer % 2 == 1 ? "⇧ ON" : FOOTER[i];
+                String text = i == 0 ? (layer >= 2 ? "ABC" : "?123") : i == 1 ? (layer == KeyboardLayout.DIGITS ? "SYM" : layer == KeyboardLayout.SYMBOLS ? "EX+" : layer == KeyboardLayout.EXTRA_SYMBOLS ? "123" : layer == KeyboardLayout.UPPER ? "⇧ ON" : "⇧") : FOOTER[i];
                 label(canvas, text, cx, cy, i == 3 ? 11 : 13, i == 3 ? INK : WHITE, false);
             }
         }

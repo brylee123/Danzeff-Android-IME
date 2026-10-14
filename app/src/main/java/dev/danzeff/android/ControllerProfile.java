@@ -12,6 +12,7 @@ public final class ControllerProfile {
         {"slot2", "Cross / bottom character"}, {"slot3", "Circle / right character"},
         {"shift_hold", "Hold shift (PSP R trigger)"}, {"shift", "Toggle / one-shot shift"},
         {"numbers", "Switch letters / numbers (PSP L trigger)"},
+        {"symbols", "Open symbols page"}, {"extra_symbols", "Open extra symbols (Flipper EX+)"},
         {"space", "Space"}, {"delete", "Delete / backspace"}, {"newline", "New line (PSP D-pad down)"},
         {"enter", "Start / Enter or editor action"},
         {"cursor_left", "Move cursor left"}, {"cursor_right", "Move cursor right"},

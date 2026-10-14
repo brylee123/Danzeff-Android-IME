@@ -108,6 +108,16 @@ public class KeyboardRenderingTest {
         swipe(keyboard.view, 120, 150, 60, 150);
         assertEquals("a", keyboard.output.get(2));
     }
+    @Test public void extraSymbolsSupportSwipeAndTwoTapAndKeepThePage() throws Exception {
+        Keyboard keyboard = new Keyboard(); keyboard.layer = KeyboardLayout.EXTRA_SYMBOLS;
+        keyboard.view.updateState(keyboard.layer, 1, 1);
+        save(bitmap(keyboard.view), "keyboard-extra-symbols.png");
+        swipe(keyboard.view, 120, 150, 120, 100);
+        tap(keyboard.view, 120, 150); tap(keyboard.view, 90, 191);
+        assertArrayEquals(new String[]{"@", "#"}, keyboard.output.toArray(new String[0]));
+        assertEquals(KeyboardLayout.EXTRA_SYMBOLS, keyboard.layer);
+        assertEquals(1, keyboard.row); assertEquals(1, keyboard.col);
+    }
     private static Bitmap bitmap(View view) {
         Bitmap bitmap = Bitmap.createBitmap(720, 592, Bitmap.Config.ARGB_8888); view.draw(new Canvas(bitmap)); return bitmap;
     }

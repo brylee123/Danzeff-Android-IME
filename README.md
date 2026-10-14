@@ -1,4 +1,4 @@
-# Danzeff Android IME — proof of concept v0.4
+# Danzeff Android IME — proof of concept v0.5
 
 An **actual Android system keyboard** (InputMethodService), not a mockup or a text-editor-only control. Original Danzeff-style 3x3 groups and four face-button positions, written from scratch in Java with native Android APIs. No UI library or third-party runtime dependencies.
 
@@ -84,3 +84,11 @@ Android platform IME reference: https://developer.android.com/develop/ui/views/t
 ## Keyboard appearance
 
 Open the launcher app and choose **Keyboard appearance**: **Light**, **Dark**, or **System (auto)** (the default). The keyboard, expanded cells, controller toggle and footer use solid rounded Gboard-inspired shapes with the Danzeff amber accent. Google Sans Regular and Medium are bundled from Google's official v14.000 Android font release under SIL OFL 1.1; the full font notice is included in the app credits. System mode follows Android night mode, including changes while the keyboard is open.
+
+## Symbols and extra punctuation
+
+Tap **?123** for digits, then **SYM** for the original symbols page, **EX+** for the Flipper convenience symbols page, and **123** to return to digits. **ABC** returns to letters from any numeric/symbol page. Characters use the same swipe or two-tap gestures and the symbol page stays open after typing. EX+ includes @ # $ % ^ & * + - _ = ~ < > [ ] { } \ / | : ; ! ? , . quotes, backtick, parentheses, zero, delete and space. It uses the exact Danzeff Flipper Lab extra-page positions. This page adds convenient access to existing ASCII punctuation; Unicode currency/math and emoji are future work.
+
+Controller profiles now offer **Open symbols page** and **Open extra symbols (Flipper EX+)** actions. Existing mappings and PSP hold-shift behavior remain available. The toggle-shift action cycles numeric pages; on letters it remains one-shot shift.
+
+See [the daily-keyboard roadmap](docs/DAILY_KEYBOARD_ROADMAP.md) for prioritized proposed features.

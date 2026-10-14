@@ -13,3 +13,5 @@ Attribution does not imply endorsement. The original authors' names must not be 
 
 
 Google Sans Regular and Medium v14.000 (Android static builds), unmodified, are bundled under SIL OFL 1.1. See [font license](licenses/GOOGLE-SANS-OFL.txt) and [official release](https://github.com/googlefonts/googlesans/releases/tag/v14.000). The font notice is also included in the APK. This project is not affiliated with Google or Gboard.
+
+The fifth EX+ page is ported from Danzeff Flipper Lab's danzeff_core.c convenience layout. Its full BSD 2-Clause notice is retained in docs/licenses/DANZEFF-FLIPPER-LICENSE.txt and the APK credits. The first four Android pages retain their existing OSlib mapping.
