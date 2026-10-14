@@ -1,4 +1,4 @@
-# Danzeff Android IME — proof of concept v0.5
+# Danzeff Android IME — proof of concept v0.6
 
 An **actual Android system keyboard** (InputMethodService), not a mockup or a text-editor-only control. Original Danzeff-style 3x3 groups and four face-button positions, written from scratch in Java with native Android APIs. No UI library or third-party runtime dependencies.
 
@@ -13,7 +13,7 @@ An **actual Android system keyboard** (InputMethodService), not a mockup or a te
 - **Bluetooth/USB controller and keypad profiles**: assign buttons, stick positions, D-pad hats and triggers to Danzeff actions, save copies, rename profiles and select an active profile independently for each input device. Actual Android controller mapping varies; needs hardware testing.
 - Rounded Gboard-inspired keys and controls, bundled Google Sans typography, and Light/Dark/System appearance with a solid amber active cell. Footer controls sit above a dedicated system-navigation strip.
 - An **in-app typing test**: prompted sentence, elapsed time, approximate completed-text WPM, text-vs-prompt-prefix accuracy, deletion count, manual reset. No test logs are saved.
-- No network permission, analytics, logging of typed content, clipboard reads, dictionaries, or cloud features.
+- No network permission, analytics, typed-text storage or dictionary learning. Suggestions use a small bundled English starter lexicon; copy/cut/paste delegates to the focused editor.
 
 ## Build and install
 
@@ -49,7 +49,7 @@ On the original numeric page, the number is usually on the **RIGHT** (circle); *
 
 ## Safety and current limitations
 
-This is a research proof of concept, **not a polished daily-driver**. Touch target sizes, TalkBack accessibility, emoji, non-English languages, cursor arrows, long-press key repeat, autocorrection, accessibility scaling, autocapitalization, and word suggestions require further work. Gamepad support is implemented but **not yet validated on hardware**. Some fields/apps may not accept actions identically, and keyboard-switching behavior can vary by OEM.
+This is a research proof of concept, **not a polished daily-driver**. Touch target sizes, full TalkBack support, accessibility scaling, broader dictionaries, emoji entry and multilingual input require further work. Cursor editing, delete repeat, smart caps and starter offline suggestions are now available, with compatibility limits documented below. Gamepad support is implemented but **not yet validated on hardware**. Some fields/apps may not accept actions identically, and keyboard-switching behavior can vary by OEM.
 
 All typed text is sent only to the currently focused Android text field using `InputConnection`; there is **no INTERNET permission**, no background service other than the Android IME service, and no text persistence. Android warns when enabling any third-party keyboard because such an IME has access to user input; do not enter credentials with an unreviewed build.
 
@@ -92,3 +92,15 @@ Tap **?123** for digits, then **SYM** for the original symbols page, **EX+** for
 Controller profiles now offer **Open symbols page** and **Open extra symbols (Flipper EX+)** actions. Existing mappings and PSP hold-shift behavior remain available. The toggle-shift action cycles numeric pages; on letters it remains one-shot shift.
 
 See [the daily-keyboard roadmap](docs/DAILY_KEYBOARD_ROADMAP.md) for prioritized proposed features.
+## Daily-use features (v0.6)
+
+- **Field-aware entry:** numeric/phone fields start on digits, including zero in the center-left slot. Signed/decimal fields expose minus/decimal point; phone, email, URL and password fields have relevant shortcut buttons. Manual page selection remains available. The Enter key uses Search/Send/Next/Go/Done or the editor's custom action; multiline/no-enter-action fields retain newline behavior.
+- **Edit toolbar:** tap **Edit**, use left/right arrows, toggle **Select** to extend a selection, or choose Select all/Copy/Cut/Paste. The toolbar scrolls horizontally. Drag **Space** left/right to move the cursor without inserting a space. Editor context-menu actions handle clipboard access; the keyboard does not retain clipboard history.
+- **Delete repeat:** hold the footer delete key or a controller input mapped to Delete. One deletion occurs immediately, repeat starts after 450 ms, and repeats every 80 ms. Release, leaving the key, cancel, device disconnect, view hide/detach or resize stops repeat.
+- **Unicode editing:** ICU grapheme boundaries, with emoji joins for older Android, preserve combining accents, flags, skin tones and joined emoji. Context queries are bounded; unsupported or truncated context falls back to editor key handling. This depends on the host editor and Android's Unicode version.
+- **Smart caps/punctuation:** honor capitalization context/flags, allow a manual lowercase override and explicit **Caps** lock, and optionally turn two spaces within 700 ms into a period plus space. Backspace can undo that transformation immediately. Literal/no-suggestions, password, numeric, phone, email and URL fields do not receive automatic text transformations.
+- **Local English suggestions:** a small original bundled starter lexicon offers prefix/near-match suggestions. Tap a candidate to replace the current word and append space; stale candidate taps are rejected. No learning or typed-word persistence. Suggestion flags and private-learning requests are respected.
+- **Optional reversible autocorrect:** off by default; when enabled, Space corrects only a unique one-edit dictionary match. Immediate Backspace restores the original word. New typing, field change or external cursor/selection changes invalidate undo. Editors without sufficient selection context do not receive automatic correction.
+- **Feedback:** optional haptics (off by default, respecting Android's system setting), visible pressed footer states, swipe-sector highlights and a brief committed-cell outline. Configure under **Typing & feedback**, from the launcher or keyboard Settings button.
+
+See [compatibility and reliability coverage](docs/COMPATIBILITY_MATRIX.md). These are prototype implementations, not a claim of comprehensive physical-device or app compatibility.

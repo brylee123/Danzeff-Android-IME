@@ -118,6 +118,18 @@ public class KeyboardRenderingTest {
         assertEquals(KeyboardLayout.EXTRA_SYMBOLS, keyboard.layer);
         assertEquals(1, keyboard.row); assertEquals(1, keyboard.col);
     }
+    @Test public void hapticsAreOptInAndCommitsHaveVisibleFeedback() {
+        Keyboard keyboard = new Keyboard();
+        int previousFeedback = org.robolectric.Shadows.shadowOf(keyboard.view).lastHapticFeedbackPerformed();
+        int previousPixel = bitmap(keyboard.view).getPixel(300, 220);
+        keyboard.view.notifyCommitted();
+        assertEquals(previousFeedback, org.robolectric.Shadows.shadowOf(keyboard.view).lastHapticFeedbackPerformed());
+        assertNotEquals(previousPixel, bitmap(keyboard.view).getPixel(300, 220));
+        RuntimeEnvironment.getApplication().getSharedPreferences("danzeff_preferences", 0).edit().putBoolean("haptics", true).commit();
+        keyboard.view.notifyCommitted();
+        assertEquals(android.view.HapticFeedbackConstants.KEYBOARD_TAP,
+                org.robolectric.Shadows.shadowOf(keyboard.view).lastHapticFeedbackPerformed());
+    }
     private static Bitmap bitmap(View view) {
         Bitmap bitmap = Bitmap.createBitmap(720, 592, Bitmap.Config.ARGB_8888); view.draw(new Canvas(bitmap)); return bitmap;
     }

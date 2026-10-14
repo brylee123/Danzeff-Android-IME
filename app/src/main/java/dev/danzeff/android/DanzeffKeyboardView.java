@@ -20,6 +20,7 @@ public final class DanzeffKeyboardView extends View {
         void onChooseSlot(int slot);
         void onBackspace(); void onSpace(); void onEnter();
         void onShift(); void onNumbers(); void onSwitchKeyboard();
+        default void onMoveCursor(int direction) {}
     }
     private int BG, PANEL, CELL, WHITE, INK, AMBER, SECTOR, DIVIDER;
 
@@ -41,6 +42,35 @@ public final class DanzeffKeyboardView extends View {
     private int touchZone, footerPressed = -1, swipeSlot = -1;
     private float downX, downY;
     private final float swipeThreshold;
+    private FieldPolicy editorPolicy;
+    private boolean handlingFooter, footerCanceled, spaceDragging;
+    private float spaceLastX;
+    private int footerPointer = -1;
+    private int flashRow = -1, flashCol = -1;
+    private long flashUntil;
+    private boolean repeatingDelete;
+    private final Runnable deleteRepeat = new Runnable() {
+        @Override public void run() {
+            if (!repeatingDelete || footerCanceled) return;
+            listener.onBackspace(); postDelayed(this, 80);
+        }
+    };
+    public void setEditorPolicy(FieldPolicy policy) { editorPolicy = policy; }
+    private String displayCharacter(String value) { return value.isEmpty() ? "" : KeyboardLayout.display(value); }
+    private String characterAt(int row, int col, int slot) {
+        return editorPolicy == null ? KeyboardLayout.at(layer, row, col, slot)
+                : editorPolicy.character(layer, row, col, slot);
+    }
+    private void haptic(int feedback) {
+        if (preferences.getBoolean("haptics", false)) performHapticFeedback(feedback);
+    }
+    public void notifyCommitted() {
+        flashRow = selectedRow; flashCol = selectedCol;
+        flashUntil = android.os.SystemClock.uptimeMillis() + 160;
+        haptic(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
+        invalidate(); postInvalidateDelayed(170);
+    }
+    private void stopRepeat() { repeatingDelete = false; removeCallbacks(deleteRepeat); }
 
     public DanzeffKeyboardView(Context context, Listener callback) {
         super(context); listener = callback;
@@ -68,11 +98,12 @@ public final class DanzeffKeyboardView extends View {
         preferences.registerOnSharedPreferenceChangeListener(appearanceListener); refreshAppearance();
     }
     @Override protected void onDetachedFromWindow() {
+        stopRepeat();
         preferences.unregisterOnSharedPreferenceChangeListener(appearanceListener);
         super.onDetachedFromWindow();
     }
     @Override protected void onConfigurationChanged(Configuration configuration) {
-        super.onConfigurationChanged(configuration); refreshAppearance();
+        super.onConfigurationChanged(configuration); resetTouchSelection(); refreshAppearance();
     }
     public void updateState(int newLayer, int row, int col) {
         layer = newLayer; selectedRow = row; selectedCol = col; invalidate();
@@ -83,6 +114,7 @@ public final class DanzeffKeyboardView extends View {
         geometry(getWidth(), getHeight()); requestLayout(); invalidate();
     }
     public void resetTouchSelection() {
+        stopRepeat(); handlingFooter = false; footerPointer = -1;
         expandedRow = expandedCol = -1; activePointer = -1; swipeSlot = -1;
         touchZone = NONE; footerPressed = -1; invalidate();
     }
@@ -125,10 +157,10 @@ public final class DanzeffKeyboardView extends View {
     }
     private void characters(Canvas canvas, RectF bounds, int row, int col, float size, int color) {
         float cx = bounds.centerX(), cy = bounds.centerY();
-        label(canvas, KeyboardLayout.display(KeyboardLayout.at(layer, row, col, 0)), cx, cy - bounds.height() * .29f, size, color, false);
-        label(canvas, KeyboardLayout.display(KeyboardLayout.at(layer, row, col, 1)), cx - bounds.width() * .30f, cy, size, color, false);
-        label(canvas, KeyboardLayout.display(KeyboardLayout.at(layer, row, col, 2)), cx, cy + bounds.height() * .29f, size, color, false);
-        label(canvas, KeyboardLayout.display(KeyboardLayout.at(layer, row, col, 3)), cx + bounds.width() * .30f, cy, size, color, false);
+        label(canvas, displayCharacter(characterAt(row, col, 0)), cx, cy - bounds.height() * .29f, size, color, false);
+        label(canvas, displayCharacter(characterAt(row, col, 1)), cx - bounds.width() * .30f, cy, size, color, false);
+        label(canvas, displayCharacter(characterAt(row, col, 2)), cx, cy + bounds.height() * .29f, size, color, false);
+        label(canvas, displayCharacter(characterAt(row, col, 3)), cx + bounds.width() * .30f, cy, size, color, false);
     }
     private final RectF cellBounds = new RectF();
     @Override protected void onDraw(Canvas canvas) {
@@ -149,6 +181,10 @@ public final class DanzeffKeyboardView extends View {
             boolean selected = row == selectedRow && col == selectedCol;
             box(canvas, selected ? AMBER : CELL, cellBounds, d(12));
             characters(canvas, cellBounds, row, col, ch < d(55) ? 11 : 15, selected ? INK : WHITE);
+            if (row == flashRow && col == flashCol && android.os.SystemClock.uptimeMillis() < flashUntil) {
+                paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(d(2)); paint.setColor(WHITE);
+                canvas.drawRoundRect(cellBounds, d(12), d(12), paint); paint.setStyle(Paint.Style.FILL);
+            }
         }
         if (controllerConnected) drawFaces(canvas);
         drawFooter(canvas);
@@ -186,23 +222,23 @@ public final class DanzeffKeyboardView extends View {
             float y = cy + (slot == 0 ? -fh * .29f : slot == 2 ? fh * .29f : 0);
             paint.setColor(PANEL); canvas.drawCircle(x, y, radius, paint);
             label(canvas, FACE_GLYPHS[slot], x, y - d(7), 17, AMBER, true);
-            label(canvas, KeyboardLayout.display(KeyboardLayout.at(layer, selectedRow, selectedCol, slot)), x, y + d(12), 12, WHITE, true);
+            label(canvas, displayCharacter(characterAt(selectedRow, selectedCol, slot)), x, y + d(12), 12, WHITE, true);
         }
     }
     private void drawFooter(Canvas canvas) {
         float width = getWidth() / 6f, top = getHeight() - footerHeight + d(3), bottom = getHeight() - d(5);
         for (int i = 0; i < 6; i++) {
             float left = i * width + d(2), right = (i + 1) * width - d(2), cx = (left + right) / 2, cy = (top + bottom) / 2;
-            box(canvas, i == 3 ? AMBER : PANEL, left, top, right, bottom, d(22));
+            box(canvas, i == footerPressed && handlingFooter && !footerCanceled || i == 3 ? AMBER : PANEL, left, top, right, bottom, d(22));
             if (i == 5) {
                 // A monochrome globe keeps the solid palette and avoids color emoji fonts.
-                paint.setStyle(Paint.Style.STROKE); paint.setColor(WHITE); paint.setStrokeWidth(d(1.3f));
+                paint.setStyle(Paint.Style.STROKE); paint.setColor(i == footerPressed && handlingFooter && !footerCanceled ? INK : WHITE); paint.setStrokeWidth(d(1.3f));
                 float radius = d(10); canvas.drawCircle(cx, cy, radius, paint);
                 canvas.drawOval(cx - radius * .45f, cy - radius, cx + radius * .45f, cy + radius, paint);
                 canvas.drawLine(cx - radius, cy, cx + radius, cy, paint); paint.setStyle(Paint.Style.FILL);
             } else {
-                String text = i == 0 ? (layer >= 2 ? "ABC" : "?123") : i == 1 ? (layer == KeyboardLayout.DIGITS ? "SYM" : layer == KeyboardLayout.SYMBOLS ? "EX+" : layer == KeyboardLayout.EXTRA_SYMBOLS ? "123" : layer == KeyboardLayout.UPPER ? "⇧ ON" : "⇧") : FOOTER[i];
-                label(canvas, text, cx, cy, i == 3 ? 11 : 13, i == 3 ? INK : WHITE, false);
+                String text = i == 0 ? (layer >= 2 ? "ABC" : "?123") : i == 1 ? (layer == KeyboardLayout.DIGITS ? "SYM" : layer == KeyboardLayout.SYMBOLS ? "EX+" : layer == KeyboardLayout.EXTRA_SYMBOLS ? "123" : layer == KeyboardLayout.UPPER ? "⇧ ON" : "⇧") : i == 4 && editorPolicy != null ? editorPolicy.enterLabel : FOOTER[i];
+                label(canvas, text, cx, cy, i == 3 || text.length() > 4 ? 11 : 13, i == footerPressed && handlingFooter && !footerCanceled || i == 3 ? INK : WHITE, false);
             }
         }
     }
@@ -224,13 +260,14 @@ public final class DanzeffKeyboardView extends View {
     }
     private void expand(float x, float y) {
         expandedRow = cellRow(y); expandedCol = cellCol(x); swipeSlot = -1;
-        listener.onChooseGroup(expandedRow, expandedCol); popupGeometry(); invalidate();
+        listener.onChooseGroup(expandedRow, expandedCol); popupGeometry();
+        haptic(android.view.HapticFeedbackConstants.CLOCK_TICK); invalidate();
     }
     private void resetAfterCharacter() {
         resetTouchSelection(); listener.onChooseGroup(1, 1);
     }
     private void commitSlot(int slot) {
-        if (slot < 0 || KeyboardLayout.at(layer, expandedRow, expandedCol, slot).isEmpty()) return;
+        if (slot < 0 || characterAt(expandedRow, expandedCol, slot).isEmpty()) return;
         listener.onChooseGroup(expandedRow, expandedCol); listener.onChooseSlot(slot); resetAfterCharacter();
     }
     private void footerAction(int column) {
@@ -242,6 +279,17 @@ public final class DanzeffKeyboardView extends View {
     }
     @Override public boolean onTouchEvent(MotionEvent event) {
         geometry(getWidth(), getHeight());
+        if (event.getActionMasked() == MotionEvent.ACTION_DOWN && zone(event.getX(), event.getY()) == FOOTER_ZONE) {
+            expandedRow = expandedCol = -1;
+            handlingFooter = true; footerCanceled = spaceDragging = false;
+            footerPointer = event.getPointerId(0);
+            footerPressed = (int) (6 * event.getX() / getWidth()); spaceLastX = event.getX();
+            if (footerPressed == 2) {
+                repeatingDelete = true; listener.onBackspace(); postDelayed(deleteRepeat, 450);
+            }
+            invalidate(); return true;
+        }
+        if (handlingFooter) return footerTouch(event);
         if (controllerConnected) return controllerTouch(event);
         int action = event.getActionMasked();
         if (action == MotionEvent.ACTION_CANCEL) { resetAfterCharacter(); return true; }
@@ -278,6 +326,39 @@ public final class DanzeffKeyboardView extends View {
                 footerAction(footerPressed);
             }
             activePointer = -1; swipeSlot = -1; touchZone = NONE; invalidate(); performClick();
+        }
+        return true;
+    }
+    private boolean footerTouch(MotionEvent event) {
+        int action = event.getActionMasked();
+        if (action == MotionEvent.ACTION_CANCEL) { resetTouchSelection(); return true; }
+        int index = event.findPointerIndex(footerPointer);
+        if (index < 0) { resetTouchSelection(); return true; }
+        float x = event.getX(index), y = event.getY(index);
+        if (action == MotionEvent.ACTION_MOVE) {
+            if (footerPressed == 3 && !footerCanceled) {
+                float delta = x - spaceLastX;
+                int steps = Math.min(20, (int) (Math.abs(delta) / d(18)));
+                if (steps > 0) {
+                    spaceDragging = true; int direction = delta < 0 ? -1 : 1;
+                    for (int i = 0; i < steps; i++) listener.onMoveCursor(direction);
+                    spaceLastX += direction * steps * d(18);
+                    haptic(android.view.HapticFeedbackConstants.CLOCK_TICK);
+                }
+                if (y < getHeight() - footerHeight - d(24) || y > getHeight() + d(24)) footerCanceled = true;
+            } else if (zone(x, y) != FOOTER_ZONE || (int) (6 * x / getWidth()) != footerPressed) {
+                footerCanceled = true; stopRepeat();
+            }
+            invalidate(); return true;
+        }
+        if ((action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP)
+                && event.getPointerId(event.getActionIndex()) == footerPointer) {
+            int pressed = footerPressed;
+            boolean commit = !footerCanceled && !spaceDragging && pressed != 2
+                    && zone(x, y) == FOOTER_ZONE && (int) (6 * x / getWidth()) == pressed;
+            stopRepeat(); handlingFooter = false; footerPressed = -1; footerPointer = -1;
+            if (commit) footerAction(pressed);
+            invalidate(); performClick();
         }
         return true;
     }

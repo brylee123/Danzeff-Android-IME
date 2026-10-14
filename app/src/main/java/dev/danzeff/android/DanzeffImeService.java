@@ -23,6 +23,18 @@ import android.widget.FrameLayout;
 public class DanzeffImeService extends InputMethodService implements DanzeffKeyboardView.Listener {
     private DanzeffKeyboardView keyboard;
     private FrameLayout keyboardContainer;
+    private android.widget.LinearLayout toolbar, suggestionBar;
+    private final EditingEngine editing = new EditingEngine(this::getCurrentInputConnection);
+    private boolean editingTools, autoCapsSuppressed, capsLock;
+    private final android.os.Handler repeatHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private String repeatInput;
+    private final Runnable deleteRepeat = new Runnable() {
+        @Override public void run() {
+            if (repeatInput == null || !isInputViewShown()) { stopDeleteRepeat(); return; }
+            onBackspace(); repeatHandler.postDelayed(this, 80);
+        }
+    };
+    private void stopDeleteRepeat() { repeatInput = null; repeatHandler.removeCallbacks(deleteRepeat); }
     private boolean numbers;
     private boolean extraSymbols;
     private boolean shift;
@@ -41,6 +53,7 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
             String prefix = id + ":";
             heldShift.removeIf(token -> token.startsWith(prefix));
             consumedKeys.removeIf(token -> token.startsWith(prefix));
+            if (repeatInput != null && repeatInput.startsWith(prefix)) stopDeleteRepeat();
             controllerInput.forget(id); syncView(); refreshControllerLayout();
         }
     };
@@ -51,6 +64,8 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
         if (inputManager != null) inputManager.registerInputDeviceListener(deviceListener, null);
     }
     @Override public void onDestroy() {
+        stopDeleteRepeat(); editing.reset(); clearTransientUi();
+        if (keyboard != null) keyboard.resetTouchSelection();
         if (inputManager != null) inputManager.unregisterInputDeviceListener(deviceListener);
         super.onDestroy();
     }
@@ -64,7 +79,17 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
         refreshControllerLayout();
         FrameLayout container = new FrameLayout(this); keyboardContainer = container;
         container.setBackgroundColor(KeyboardAppearance.background(this));
-        container.addView(keyboard, new FrameLayout.LayoutParams(
+        android.widget.LinearLayout stack = new android.widget.LinearLayout(this);
+        stack.setOrientation(android.widget.LinearLayout.VERTICAL);
+        suggestionBar = new android.widget.LinearLayout(this);
+        suggestionBar.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+        stack.addView(suggestionBar);
+        android.widget.HorizontalScrollView toolsScroll = new android.widget.HorizontalScrollView(this);
+        toolsScroll.setHorizontalScrollBarEnabled(false);
+        toolbar = new android.widget.LinearLayout(this); toolbar.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+        toolsScroll.addView(toolbar); stack.addView(toolsScroll);
+        stack.addView(keyboard);
+        container.addView(stack, new FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT));
         container.setOnApplyWindowInsetsListener((view, insets) -> {
             int bottom = Build.VERSION.SDK_INT >= 30
@@ -74,13 +99,24 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
             view.setPadding(0, 0, 0, Math.max(bottom, shortcuts));
             return insets;
         });
+        refreshAppearance(); syncView();
         return container;
     }
 
+    @Override public void onStartInput(EditorInfo info, boolean restarting) {
+        super.onStartInput(info, restarting);
+        editing.start(info); loadTypingSettings(); stopDeleteRepeat();
+        numbers = editing.policy.numeric; shift = extraSymbols = autoCapsSuppressed = capsLock = false;
+        heldShift.clear(); consumedKeys.clear(); controllerInput.reset();
+        row = col = 1;
+        if (keyboard != null) keyboard.resetTouchSelection();
+        syncView();
+    }
     @Override public void onStartInputView(EditorInfo info, boolean restarting) {
         super.onStartInputView(info, restarting);
         refreshAppearance();
-        numbers = false; extraSymbols = false;
+        editing.start(info); loadTypingSettings(); stopDeleteRepeat(); editingTools = false; autoCapsSuppressed = capsLock = false;
+        numbers = editing.policy.numeric; extraSymbols = false;
         shift = false;
         row = 1;
         col = 1;
@@ -107,7 +143,9 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
         }
     }
     @Override public void onConfigurationChanged(android.content.res.Configuration configuration) {
-        super.onConfigurationChanged(configuration); refreshAppearance();
+        super.onConfigurationChanged(configuration); stopDeleteRepeat();
+        if (keyboard != null) keyboard.resetTouchSelection();
+        refreshAppearance(); syncView();
     }
     @Override public boolean onEvaluateFullscreenMode() {
         // Keeps the field visible on most landscape screens, including foldables.
@@ -115,10 +153,15 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
     }
 
     int currentLayer() {
-        return extraSymbols ? KeyboardLayout.EXTRA_SYMBOLS : KeyboardLayout.layer(numbers, shift || !heldShift.isEmpty());
+        return extraSymbols ? KeyboardLayout.EXTRA_SYMBOLS : KeyboardLayout.layer(numbers, shift || !heldShift.isEmpty() || !numbers && capsLock || !numbers && !autoCapsSuppressed && editing.capsMode() != 0);
     }
     private void syncView() {
-        if (keyboard != null) keyboard.updateState(currentLayer(), row, col);
+        loadTypingSettings();
+        if (keyboard != null) {
+            keyboard.setEditorPolicy(editing.policy);
+            keyboard.updateState(currentLayer(), row, col);
+        }
+        updateToolbar();
     }
 
     private void refreshControllerLayout() {
@@ -145,13 +188,14 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
     }
 
     @Override public void onChooseSlot(int slot) {
-        String text = KeyboardLayout.at(currentLayer(), row, col, slot);
+        String text = editing.policy.character(currentLayer(), row, col, slot);
         if (text.isEmpty()) return;
         if ("\b".equals(text)) {
             deleteCharacter();
         } else {
             commit(text);
         }
+        autoCapsSuppressed = false; syncView();
         // Touch shift is one-shot; mapped hold-shift inputs remain active until released.
         if (shift && !numbers) {
             shift = false;
@@ -159,28 +203,31 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
         }
     }
 
-    @Override public void onBackspace() { deleteCharacter(); }
-    @Override public void onSpace() { commit(" "); }
+    @Override public void onBackspace() { if (editing.delete()) feedback(); autoCapsSuppressed = false; syncView(); }
+    @Override public void onSpace() { if (editing.space(SystemClock.uptimeMillis())) feedback(); autoCapsSuppressed = false; syncView(); }
     @Override public void onEnter() {
-        InputConnection connection = getCurrentInputConnection();
-        if (connection == null) return;
-        EditorInfo info = getCurrentInputEditorInfo();
-        int action = info == null ? EditorInfo.IME_ACTION_NONE :
-            (info.imeOptions & EditorInfo.IME_MASK_ACTION);
-        if (action != EditorInfo.IME_ACTION_NONE && action != EditorInfo.IME_ACTION_UNSPECIFIED) {
-            if (connection.performEditorAction(action)) return;
-        }
-        commit("\n");
+        boolean accepted = editing.enter();
+        if (accepted) feedback();
+        else if (editing.policy.numeric && editing.policy.actionId == 0
+                && (editing.policy.action == EditorInfo.IME_ACTION_NONE || editing.policy.action == EditorInfo.IME_ACTION_UNSPECIFIED)
+                && (editing.policy.options & EditorInfo.IME_FLAG_NO_ENTER_ACTION) == 0) requestHideSelf(0);
+        autoCapsSuppressed = false; syncView();
     }
+    @Override public void onMoveCursor(int direction) { editing.move(direction); autoCapsSuppressed = false; syncView(); }
     @Override public void onShift() {
         if (numbers) {
             if (extraSymbols) { extraSymbols = false; shift = false; }
             else if (shift) { extraSymbols = true; shift = false; }
             else shift = true;
-        } else shift = !shift;
+        } else {
+            if (capsLock) { capsLock = false; shift = false; autoCapsSuppressed = true; }
+            else if (!shift && heldShift.isEmpty() && !autoCapsSuppressed && editing.capsMode() != 0) autoCapsSuppressed = true;
+            else { shift = !shift; autoCapsSuppressed = false; }
+        }
         if (keyboard != null) keyboard.resetTouchSelection();
         syncView();
     }
+    public void onCapsLock() { capsLock = !capsLock; shift = false; autoCapsSuppressed = false; syncView(); }
     public void onSymbols() { numbers = true; shift = true; extraSymbols = false; resetPage(); }
     public void onExtraSymbols() { numbers = true; shift = false; extraSymbols = true; resetPage(); }
     private void resetPage() {
@@ -196,32 +243,92 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
         }
     }
 
-    private void commit(String text) {
-        InputConnection connection = getCurrentInputConnection();
-        if (connection != null) connection.commitText(text, 1);
+    private void commit(String text) { if (editing.type(text)) feedback(); syncView(); }
+    private void deleteCharacter() { onBackspace(); }
+    private void feedback() { if (keyboard != null) keyboard.notifyCommitted(); }
+    private void clearTransientUi() {
+        if (suggestionBar != null) { suggestionBar.removeAllViews(); suggestionBar.setVisibility(View.GONE); }
+        if (toolbar != null) toolbar.removeAllViews();
     }
+    private void loadTypingSettings() {
+        var prefs = getSharedPreferences("danzeff_preferences", 0);
+        editing.suggestionsEnabled = prefs.getBoolean("suggestions", true);
+        editing.autocorrectEnabled = prefs.getBoolean("autocorrect", false);
+        editing.capitalizationEnabled = prefs.getBoolean("capitalization", true);
+        editing.punctuationEnabled = prefs.getBoolean("punctuation", true);
+    }
+    @Override public void onUpdateSelection(int oldStart, int oldEnd, int start, int end, int candidatesStart, int candidatesEnd) {
+        super.onUpdateSelection(oldStart, oldEnd, start, end, candidatesStart, candidatesEnd);
+        editing.selectionChanged(start, end); syncView();
+    }
+    @Override public void onFinishInputView(boolean finishingInput) {
+        stopDeleteRepeat(); editing.reset(); clearTransientUi();
+        if (keyboard != null) keyboard.resetTouchSelection(); editingTools = false;
+        super.onFinishInputView(finishingInput);
+    }
+    private android.widget.Button tool(String label, Runnable action) {
+        android.widget.Button button = new android.widget.Button(this);
+        button.setAllCaps(false); button.setText(label); button.setTextSize(13);
+        button.setTypeface(getResources().getFont(R.font.google_sans_medium));
+        button.setTextColor(KeyboardAppearance.dark(this) ? 0xFFE8EAED : 0xFF202124);
+        int padding = Math.round(8 * getResources().getDisplayMetrics().density);
+        button.setPadding(padding, 0, padding, 0); button.setMinHeight(0); button.setMinimumHeight(0);
+        button.setMinWidth(Math.round(48 * getResources().getDisplayMetrics().density)); button.setMinimumWidth(0);
+        android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
+        shape.setColor(KeyboardAppearance.dark(this) ? 0xFF3C4043 : 0xFFDEE1E6);
+        shape.setCornerRadius(padding * 2);
+        button.setBackground(new android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(0x66F3C35A), shape, null));
+        button.setOnClickListener(v -> { action.run(); syncView(); });
+        button.setHeight(Math.round(40 * getResources().getDisplayMetrics().density));
+        android.widget.LinearLayout.LayoutParams margins = new android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, Math.round(40 * getResources().getDisplayMetrics().density));
+        int gap = Math.round(2 * getResources().getDisplayMetrics().density);
+        margins.setMargins(gap, gap, gap, gap); button.setLayoutParams(margins);
+        return button;
+    }
+    private void updateToolbar() {
+        if (toolbar == null || suggestionBar == null) return;
+        toolbar.removeAllViews(); suggestionBar.removeAllViews();
+        toolbar.addView(tool(editingTools ? "Back" : "Edit", () -> editingTools = !editingTools));
+        if (editingTools) {
+            toolbar.addView(tool("←", () -> onMoveCursor(-1)));
+            toolbar.addView(tool("→", () -> onMoveCursor(1)));
+            toolbar.addView(tool(editing.selecting() ? "Select ON" : "Select", editing::toggleSelection));
+            toolbar.addView(tool("Select all", () -> editing.contextAction(android.R.id.selectAll)));
 
-    private void deleteCharacter() {
-        InputConnection connection = getCurrentInputConnection();
-        if (connection == null) return;
-        CharSequence selected = connection.getSelectedText(0);
-        if (selected != null && selected.length() > 0) {
-            connection.commitText("", 1);
-            return;
-        }
-        CharSequence before = connection.getTextBeforeCursor(2, 0);
-        if (before != null && before.length() > 0) {
-            // Surrogate-safe deletion, e.g. an emoji immediately before the cursor.
-            int utf16 = Character.isLowSurrogate(before.charAt(before.length() - 1)) &&
-                before.length() > 1 && Character.isHighSurrogate(before.charAt(before.length() - 2)) ? 2 : 1;
-            connection.deleteSurroundingText(utf16, 0);
         } else {
-            // Some editors do not support getTextBeforeCursor; fall back to KEYCODE_DEL.
-            connection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL));
-            connection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL));
+            if (!numbers) toolbar.addView(tool(capsLock ? "Caps ON" : "Caps", this::onCapsLock));
+            for (String shortcut : editing.policy.shortcuts()) toolbar.addView(tool(shortcut, () -> commit(shortcut)));
+            toolbar.addView(tool("Settings", () -> {
+                android.content.Intent intent = new android.content.Intent(this, TypingSettingsActivity.class);
+                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(intent);
+            }));
         }
+        if (editingTools) {
+            for (int id : new int[]{android.R.id.copy, android.R.id.cut, android.R.id.paste}) {
+                String label = id == android.R.id.copy ? "Copy" : id == android.R.id.cut ? "Cut" : "Paste";
+                android.widget.Button button = tool(label, () -> editing.contextAction(id));
+                addBarButton(button);
+            }
+            suggestionBar.setVisibility(View.VISIBLE); return;
+        }
+        String word = editing.currentWord();
+        java.util.List<String> suggestions = editing.suggestions();
+        for (String suggestion : suggestions) {
+            android.widget.Button button = tool(suggestion, () -> {
+                if (editing.choose(word, suggestion)) feedback();
+            });
+            addBarButton(button);
+        }
+        suggestionBar.setVisibility(suggestions.isEmpty() ? View.GONE : View.VISIBLE);
     }
-
+    private void addBarButton(android.widget.Button button) {
+        android.widget.LinearLayout.LayoutParams params = new android.widget.LinearLayout.LayoutParams(0,
+                Math.round(40 * getResources().getDisplayMetrics().density), 1);
+        int gap = Math.round(2 * getResources().getDisplayMetrics().density);
+        params.setMargins(gap, gap, gap, gap); suggestionBar.addView(button, params);
+    }
     @Override public boolean onEvaluateInputViewShown() {
         if (super.onEvaluateInputViewShown()) return true;
         // This IME needs its character grid even when a physical keypad is attached.
@@ -229,6 +336,8 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
     }
 
     @Override public void onFinishInput() {
+        stopDeleteRepeat(); editing.reset(); clearTransientUi();
+        if (keyboard != null) keyboard.resetTouchSelection();
         heldShift.clear(); consumedKeys.clear(); controllerInput.reset();
         super.onFinishInput();
     }
@@ -243,7 +352,8 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
             if (pressed) heldShift.add(inputId); else heldShift.remove(inputId);
             syncView(); return;
         }
-        if (!pressed || action == null) return;
+        if (!pressed) { if (inputId.equals(repeatInput)) stopDeleteRepeat(); return; }
+        if (action == null) return;
         // Some controllers report the same D-pad press as both a key and a hat axis.
         String device = inputId.substring(0, inputId.indexOf(':'));
         String actionId = device + ":" + action;
@@ -263,11 +373,12 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
             case "left": onChooseGroup(row, col - 1); break;
             case "right": onChooseGroup(row, col + 1); break;
             case "shift": onShift(); break;
+            case "caps_lock": onCapsLock(); break;
             case "numbers": onNumbers(); break;
             case "symbols": onSymbols(); break;
             case "extra_symbols": onExtraSymbols(); break;
             case "space": onSpace(); break;
-            case "delete": onBackspace(); break;
+            case "delete": onBackspace(); stopDeleteRepeat(); repeatInput = inputId; repeatHandler.postDelayed(deleteRepeat, 450); break;
             case "enter": onEnter(); break;
             case "newline": commit("\n"); break;
             case "picker": onSwitchKeyboard(); break;
@@ -276,13 +387,7 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
             case "cursor_right": cursor(KeyEvent.KEYCODE_DPAD_RIGHT); break;
         }
     }
-    private void cursor(int code) {
-        InputConnection connection = getCurrentInputConnection();
-        if (connection != null) {
-            connection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, code));
-            connection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, code));
-        }
-    }
+    private void cursor(int code) { onMoveCursor(code == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1); }
     @Override public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (!isInputViewShown() || !ControllerInput.eligible(event)) return super.onKeyDown(keyCode, event);
         String token = "key:" + keyCode, inputId = event.getDeviceId() + ":" + token;
@@ -295,6 +400,7 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
     @Override public boolean onKeyUp(int keyCode, KeyEvent event) {
         String inputId = event.getDeviceId() + ":key:" + keyCode;
         if (consumedKeys.remove(inputId)) {
+            if (inputId.equals(repeatInput)) stopDeleteRepeat();
             heldShift.remove(inputId); syncView(); return true;
         }
         return super.onKeyUp(keyCode, event);

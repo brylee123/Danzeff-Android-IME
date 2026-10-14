@@ -10,7 +10,7 @@ public final class ControllerProfile {
     public static final String[][] ACTIONS = {
         {"slot0", "Triangle / top character"}, {"slot1", "Square / left character"},
         {"slot2", "Cross / bottom character"}, {"slot3", "Circle / right character"},
-        {"shift_hold", "Hold shift (PSP R trigger)"}, {"shift", "Toggle / one-shot shift"},
+        {"shift_hold", "Hold shift (PSP R trigger)"}, {"shift", "Toggle / one-shot shift"}, {"caps_lock", "Toggle caps lock"},
         {"numbers", "Switch letters / numbers (PSP L trigger)"},
         {"symbols", "Open symbols page"}, {"extra_symbols", "Open extra symbols (Flipper EX+)"},
         {"space", "Space"}, {"delete", "Delete / backspace"}, {"newline", "New line (PSP D-pad down)"},

@@ -121,6 +121,9 @@ public class MainActivity extends Activity {
                     dialog.dismiss();
                 }).setNegativeButton("Cancel", null).show());
         add(layout, appearance, 14);
+        Button typingSettings = button("Typing & feedback");
+        typingSettings.setOnClickListener(v -> startActivity(new Intent(this, TypingSettingsActivity.class)));
+        add(layout, typingSettings, 14);
         Button credits = button("Credits & licenses");
         credits.setOnClickListener(v -> {
             try (java.io.InputStream input = getAssets().open("licenses/credits.txt")) {
@@ -156,7 +159,7 @@ public class MainActivity extends Activity {
         practice.setTextSize(17);
         practice.setMinLines(2);
         practice.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE |
-                InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+                InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         practice.setPadding(dp(12), dp(12), dp(12), dp(12));
         practice.setBackground(shape(PANEL, 9));
         add(layout, practice, 8);
@@ -177,7 +180,7 @@ public class MainActivity extends Activity {
 
         add(layout, text("TOUCH: Touch a cell to expand it, keep your finger down, and swipe up, left, down or right. Release to type. Or tap a cell, lift your finger, then tap a character in the expanded cell. The grid resets after each character.\n\nWith a controller connected, the original grid and face-button layout remains available.\n\nGAMEPAD: Left stick selects a group; Y/X/A/B selects top/left/bottom/right. L1 switches letters/numbers; hold R1 to shift. D-pad up deletes, down inserts a new line, and left/right moves the cursor. Use Controller & keypad profiles to remap inputs and save device profiles.",
                 13, SECONDARY, false), 14);
-        add(layout, text("Offline prototype. No internet permission, no typed-text logging, no predictions, and no autocorrect. Avoid entering sensitive credentials until you have personally reviewed the code.",
+        add(layout, text("Offline experimental keyboard. No internet permission or typed-text logging. Local English suggestions are available; autocorrect is optional and off by default. Use Typing & feedback to configure it.",
                 12, SECONDARY, false), 0);
 
         practice.addTextChangedListener(new TextWatcher() {
