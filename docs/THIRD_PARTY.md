@@ -11,3 +11,5 @@ Original Android code is covered by the root [LICENSE](../LICENSE). Derived Danz
 
 Attribution does not imply endorsement. The original authors' names must not be used to endorse or promote derived products without their prior written permission. Source and binary redistributions must retain the applicable copyright notices, conditions and disclaimers.
 
+
+Google Sans Regular and Medium v14.000 (Android static builds), unmodified, are bundled under SIL OFL 1.1. See [font license](licenses/GOOGLE-SANS-OFL.txt) and [official release](https://github.com/googlefonts/googlesans/releases/tag/v14.000). The font notice is also included in the APK. This project is not affiliated with Google or Gboard.

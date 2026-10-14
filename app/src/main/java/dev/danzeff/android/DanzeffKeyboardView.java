@@ -21,15 +21,15 @@ public final class DanzeffKeyboardView extends View {
         void onBackspace(); void onSpace(); void onEnter();
         void onShift(); void onNumbers(); void onSwitchKeyboard();
     }
-    private static final int BG = 0xFF181818, PANEL = 0xFF555555, CELL = 0xFF777777;
-    private static final int AMBER = 0xFFF3C35A, INK = 0xFF181818, WHITE = 0xFFFFFFFF;
+    private int BG, PANEL, CELL, WHITE, INK, AMBER, SECTOR, DIVIDER;
+
     private static final String[] FOOTER = {"?123", "⇧", "⌫", "SPACE", "↵", ""};
     private static final String[] FACE_GLYPHS = {"△", "□", "×", "○"};
     private static final int NONE = 0, GRID = 1, FACES = 2, HEADER = 3, FOOTER_ZONE = 4, POPUP = 5;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path sector = new Path();
-    private final Typeface regular = Typeface.create("sans-serif", Typeface.NORMAL);
-    private final Typeface bold = Typeface.create("sans-serif-medium", Typeface.NORMAL);
+    private final Typeface regular = getResources().getFont(R.font.google_sans_regular);
+    private final Typeface bold = getResources().getFont(R.font.google_sans_medium);
     private final Listener listener;
     private final SharedPreferences preferences;
     private final SparseIntArray controllerPointers = new SparseIntArray();
@@ -47,7 +47,32 @@ public final class DanzeffKeyboardView extends View {
         preferences = context.getSharedPreferences("danzeff_preferences", Context.MODE_PRIVATE);
         controllerDirect = preferences.getBoolean("direct_touch", false);
         swipeThreshold = Math.max(d(14), ViewConfiguration.get(context).getScaledTouchSlop());
-        setClickable(true); setBackgroundColor(BG);
+        setClickable(true); refreshAppearance();
+    }
+    private final SharedPreferences.OnSharedPreferenceChangeListener appearanceListener =
+            (prefs, key) -> { if (KeyboardAppearance.KEY.equals(key)) refreshAppearance(); };
+    public void refreshAppearance() {
+        boolean dark = KeyboardAppearance.dark(getContext());
+        BG = KeyboardAppearance.background(getContext());
+        PANEL = dark ? 0xFF3C4043 : 0xFFDEE1E6;
+        CELL = dark ? 0xFF303134 : 0xFFFFFFFF;
+        WHITE = dark ? 0xFFE8EAED : 0xFF202124;
+        AMBER = dark ? 0xFFF3C35A : 0xFFF9DE9A;
+        INK = 0xFF302400;
+        SECTOR = dark ? 0xFFDBAE42 : 0xFFEBCB7A;
+        DIVIDER = dark ? 0xFF957533 : 0xFFB49A60;
+        setBackgroundColor(BG); invalidate();
+    }
+    @Override protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        preferences.registerOnSharedPreferenceChangeListener(appearanceListener); refreshAppearance();
+    }
+    @Override protected void onDetachedFromWindow() {
+        preferences.unregisterOnSharedPreferenceChangeListener(appearanceListener);
+        super.onDetachedFromWindow();
+    }
+    @Override protected void onConfigurationChanged(Configuration configuration) {
+        super.onConfigurationChanged(configuration); refreshAppearance();
     }
     public void updateState(int newLayer, int row, int col) {
         layer = newLayer; selectedRow = row; selectedCol = col; invalidate();
@@ -100,18 +125,18 @@ public final class DanzeffKeyboardView extends View {
     }
     private void characters(Canvas canvas, RectF bounds, int row, int col, float size, int color) {
         float cx = bounds.centerX(), cy = bounds.centerY();
-        label(canvas, KeyboardLayout.display(KeyboardLayout.at(layer, row, col, 0)), cx, cy - bounds.height() * .29f, size, color, true);
-        label(canvas, KeyboardLayout.display(KeyboardLayout.at(layer, row, col, 1)), cx - bounds.width() * .30f, cy, size, color, true);
-        label(canvas, KeyboardLayout.display(KeyboardLayout.at(layer, row, col, 2)), cx, cy + bounds.height() * .29f, size, color, true);
-        label(canvas, KeyboardLayout.display(KeyboardLayout.at(layer, row, col, 3)), cx + bounds.width() * .30f, cy, size, color, true);
+        label(canvas, KeyboardLayout.display(KeyboardLayout.at(layer, row, col, 0)), cx, cy - bounds.height() * .29f, size, color, false);
+        label(canvas, KeyboardLayout.display(KeyboardLayout.at(layer, row, col, 1)), cx - bounds.width() * .30f, cy, size, color, false);
+        label(canvas, KeyboardLayout.display(KeyboardLayout.at(layer, row, col, 2)), cx, cy + bounds.height() * .29f, size, color, false);
+        label(canvas, KeyboardLayout.display(KeyboardLayout.at(layer, row, col, 3)), cx + bounds.width() * .30f, cy, size, color, false);
     }
     private final RectF cellBounds = new RectF();
     @Override protected void onDraw(Canvas canvas) {
         super.onDraw(canvas); if (getWidth() <= 0 || getHeight() <= 0) return;
         geometry(getWidth(), getHeight());
-        label(canvas, "DANZEFF", d(61), headerHeight / 2, 13, AMBER, true);
+        label(canvas, "DANZEFF", d(61), headerHeight / 2, 13, WHITE, true);
         if (controllerConnected) {
-            box(canvas, PANEL, getWidth() * .43f, d(6), getWidth() - d(8), headerHeight - d(4), d(6));
+            box(canvas, PANEL, getWidth() * .43f, d(6), getWidth() - d(8), headerHeight - d(4), d(16));
             label(canvas, controllerDirect ? "DIRECT TAP  ⇄" : "TWO-STEP  ⇄", (getWidth() * .43f + getWidth() - d(8)) / 2, headerHeight / 2, 11, WHITE, true);
         } else {
             String hint = swipeSlot >= 0 ? "RELEASE TO TYPE" : expandedRow >= 0 ? "SWIPE OR TAP A CHARACTER" : "HOLD & SWIPE · OR TAP";
@@ -119,10 +144,10 @@ public final class DanzeffKeyboardView extends View {
         }
         float cw = grid.width() / 3, ch = grid.height() / 3;
         for (int row = 0; row < 3; row++) for (int col = 0; col < 3; col++) {
-            cellBounds.set(grid.left + col * cw + d(1), grid.top + row * ch + d(1),
-                grid.left + (col + 1) * cw - d(1), grid.top + (row + 1) * ch - d(1));
+            cellBounds.set(grid.left + col * cw + d(3), grid.top + row * ch + d(3),
+                grid.left + (col + 1) * cw - d(3), grid.top + (row + 1) * ch - d(3));
             boolean selected = row == selectedRow && col == selectedCol;
-            box(canvas, selected ? AMBER : CELL, cellBounds, d(1));
+            box(canvas, selected ? AMBER : CELL, cellBounds, d(12));
             characters(canvas, cellBounds, row, col, ch < d(55) ? 11 : 15, selected ? INK : WHITE);
         }
         if (controllerConnected) drawFaces(canvas);
@@ -131,8 +156,11 @@ public final class DanzeffKeyboardView extends View {
     }
     private void drawPopup(Canvas canvas) {
         box(canvas, 0x99000000, grid, 0);
-        box(canvas, INK, popup.left - d(2), popup.top - d(2), popup.right + d(2), popup.bottom + d(2), d(5));
-        box(canvas, AMBER, popup, d(4));
+        box(canvas, INK, popup.left - d(2), popup.top - d(2), popup.right + d(2), popup.bottom + d(2), d(18));
+        box(canvas, AMBER, popup, d(16));
+        int popupSave = canvas.save();
+        Path popupClip = new Path(); popupClip.addRoundRect(popup, d(16), d(16), Path.Direction.CW);
+        canvas.clipPath(popupClip);
         if (swipeSlot >= 0) {
             sector.reset(); sector.moveTo(popup.centerX(), popup.centerY());
             switch (swipeSlot) {
@@ -141,11 +169,12 @@ public final class DanzeffKeyboardView extends View {
                 case 2: sector.lineTo(popup.right, popup.bottom); sector.lineTo(popup.left, popup.bottom); break;
                 default: sector.lineTo(popup.right, popup.top); sector.lineTo(popup.right, popup.bottom); break;
             }
-            sector.close(); paint.setColor(0xFFE1AA36); canvas.drawPath(sector, paint);
+            sector.close(); paint.setColor(SECTOR); canvas.drawPath(sector, paint);
         }
-        paint.setColor(0xFFAC8535); paint.setStrokeWidth(d(1));
+        paint.setColor(DIVIDER); paint.setStrokeWidth(d(1));
         canvas.drawLine(popup.left + d(4), popup.top + d(4), popup.right - d(4), popup.bottom - d(4), paint);
         canvas.drawLine(popup.left + d(4), popup.bottom - d(4), popup.right - d(4), popup.top + d(4), paint);
+        canvas.restoreToCount(popupSave);
         characters(canvas, popup, expandedRow, expandedCol, 22, INK);
     }
     private void drawFaces(Canvas canvas) {
@@ -164,7 +193,7 @@ public final class DanzeffKeyboardView extends View {
         float width = getWidth() / 6f, top = getHeight() - footerHeight + d(3), bottom = getHeight() - d(5);
         for (int i = 0; i < 6; i++) {
             float left = i * width + d(2), right = (i + 1) * width - d(2), cx = (left + right) / 2, cy = (top + bottom) / 2;
-            box(canvas, i == 3 ? AMBER : PANEL, left, top, right, bottom, d(6));
+            box(canvas, i == 3 ? AMBER : PANEL, left, top, right, bottom, d(22));
             if (i == 5) {
                 // A monochrome globe keeps the solid palette and avoids color emoji fonts.
                 paint.setStyle(Paint.Style.STROKE); paint.setColor(WHITE); paint.setStrokeWidth(d(1.3f));
@@ -173,7 +202,7 @@ public final class DanzeffKeyboardView extends View {
                 canvas.drawLine(cx - radius, cy, cx + radius, cy, paint); paint.setStyle(Paint.Style.FILL);
             } else {
                 String text = i == 0 ? (layer >= 2 ? "ABC" : "?123") : i == 1 && layer % 2 == 1 ? "⇧ ON" : FOOTER[i];
-                label(canvas, text, cx, cy, i == 3 ? 11 : 13, i == 3 ? INK : WHITE, true);
+                label(canvas, text, cx, cy, i == 3 ? 11 : 13, i == 3 ? INK : WHITE, false);
             }
         }
     }

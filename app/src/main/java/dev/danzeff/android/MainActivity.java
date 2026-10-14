@@ -56,7 +56,7 @@ public class MainActivity extends Activity {
         v.setText(s);
         v.setTextSize(size);
         v.setTextColor(color);
-        if (bold) v.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        v.setTypeface(getResources().getFont(bold ? R.font.google_sans_medium : R.font.google_sans_regular));
         return v;
     }
 
@@ -72,7 +72,7 @@ public class MainActivity extends Activity {
         b.setText(caption);
         b.setAllCaps(false);
         b.setTextColor(BACKGROUND);
-        b.setTextSize(14);
+        b.setTextSize(14); b.setTypeface(getResources().getFont(R.font.google_sans_medium));
         b.setBackground(shape(AQUA, 11));
         b.setPadding(dp(10), dp(12), dp(10), dp(12));
         return b;
@@ -112,6 +112,15 @@ public class MainActivity extends Activity {
         mapping.setOnClickListener(v -> startActivity(new Intent(this, ControllerSettingsActivity.class)));
         add(layout, mapping, 21);
 
+        Button appearance = button("Keyboard appearance: " + KeyboardAppearance.LABELS[KeyboardAppearance.selected(this)]);
+        appearance.setOnClickListener(v -> new android.app.AlertDialog.Builder(this)
+                .setTitle("Keyboard appearance")
+                .setSingleChoiceItems(KeyboardAppearance.LABELS, KeyboardAppearance.selected(this), (dialog, choice) -> {
+                    KeyboardAppearance.select(this, choice);
+                    appearance.setText("Keyboard appearance: " + KeyboardAppearance.LABELS[choice]);
+                    dialog.dismiss();
+                }).setNegativeButton("Cancel", null).show());
+        add(layout, appearance, 14);
         Button credits = button("Credits & licenses");
         credits.setOnClickListener(v -> {
             try (java.io.InputStream input = getAssets().open("licenses/credits.txt")) {

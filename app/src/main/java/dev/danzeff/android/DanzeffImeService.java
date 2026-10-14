@@ -22,6 +22,7 @@ import android.widget.FrameLayout;
 /** System IME: no network, background processing, typed-text collection or logging. */
 public class DanzeffImeService extends InputMethodService implements DanzeffKeyboardView.Listener {
     private DanzeffKeyboardView keyboard;
+    private FrameLayout keyboardContainer;
     private boolean numbers;
     private boolean shift;
     private ControllerProfiles profiles;
@@ -60,8 +61,8 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
         keyboard = new DanzeffKeyboardView(this, this);
         syncView();
         refreshControllerLayout();
-        FrameLayout container = new FrameLayout(this);
-        container.setBackgroundColor(0xFF181818);
+        FrameLayout container = new FrameLayout(this); keyboardContainer = container;
+        container.setBackgroundColor(KeyboardAppearance.background(this));
         container.addView(keyboard, new FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT));
         container.setOnApplyWindowInsetsListener((view, insets) -> {
@@ -77,6 +78,7 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
 
     @Override public void onStartInputView(EditorInfo info, boolean restarting) {
         super.onStartInputView(info, restarting);
+        refreshAppearance();
         numbers = false;
         shift = false;
         row = 1;
@@ -90,6 +92,22 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
         syncView();
     }
 
+    private void refreshAppearance() {
+        if (keyboard != null) keyboard.refreshAppearance();
+        int background = KeyboardAppearance.background(this);
+        if (keyboardContainer != null) keyboardContainer.setBackgroundColor(background);
+        if (getWindow() != null && getWindow().getWindow() != null) {
+            android.view.Window window = getWindow().getWindow();
+            window.setNavigationBarColor(background);
+            int flags = window.getDecorView().getSystemUiVisibility();
+            window.getDecorView().setSystemUiVisibility(KeyboardAppearance.dark(this)
+                    ? flags & ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+                    : flags | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        }
+    }
+    @Override public void onConfigurationChanged(android.content.res.Configuration configuration) {
+        super.onConfigurationChanged(configuration); refreshAppearance();
+    }
     @Override public boolean onEvaluateFullscreenMode() {
         // Keeps the field visible on most landscape screens, including foldables.
         return false;

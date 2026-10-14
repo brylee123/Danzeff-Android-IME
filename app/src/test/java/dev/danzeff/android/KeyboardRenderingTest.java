@@ -27,6 +27,7 @@ public class KeyboardRenderingTest {
         int row = 1, col = 1, layer, numbers, picker;
         Keyboard() {
             RuntimeEnvironment.getApplication().getSharedPreferences("danzeff_preferences", 0).edit().clear().commit();
+            KeyboardAppearance.select(RuntimeEnvironment.getApplication(), 2);
             view = new DanzeffKeyboardView(RuntimeEnvironment.getApplication(), this);
             view.measure(View.MeasureSpec.makeMeasureSpec(720, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(592, View.MeasureSpec.EXACTLY));
             view.layout(0, 0, 720, 592);
@@ -43,9 +44,9 @@ public class KeyboardRenderingTest {
     @Test public void solidPaletteAndExpandedCellRender() throws Exception {
         Keyboard keyboard = new Keyboard();
         Bitmap preview = bitmap(keyboard.view);
-        assertEquals(0xFF777777, preview.getPixel(30, 110));
-        assertEquals(preview.getPixel(30, 110), preview.getPixel(30, 185));
-        assertEquals(0xFFF3C35A, preview.getPixel(250, 230));
+        assertEquals(0xFF303134, preview.getPixel(70, 130));
+        assertEquals(preview.getPixel(70, 130), preview.getPixel(70, 170));
+        assertEquals(0xFFF3C35A, preview.getPixel(300, 250));
         save(preview, "keyboard-preview.png");
         tap(keyboard.view, 120, 150);
         Bitmap expanded = bitmap(keyboard.view);

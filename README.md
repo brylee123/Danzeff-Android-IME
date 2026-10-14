@@ -1,4 +1,4 @@
-# Danzeff Android IME — proof of concept v0.3
+# Danzeff Android IME — proof of concept v0.4
 
 An **actual Android system keyboard** (InputMethodService), not a mockup or a text-editor-only control. Original Danzeff-style 3x3 groups and four face-button positions, written from scratch in Java with native Android APIs. No UI library or third-party runtime dependencies.
 
@@ -11,7 +11,7 @@ An **actual Android system keyboard** (InputMethodService), not a mockup or a te
 - PSP-style **lowercase, uppercase, digits, and symbols** pages (ASCII; layout from DanzeffOSLib's `modeChar`). One-shot shift for letters.
 - Backspace, space, context-aware enter/IME action, keyboard picker, and switch-to-next-keyboard.
 - **Bluetooth/USB controller and keypad profiles**: assign buttons, stick positions, D-pad hats and triggers to Danzeff actions, save copies, rename profiles and select an active profile independently for each input device. Actual Android controller mapping varies; needs hardware testing.
-- Original-style solid gray cells, white lettering, black dividers and a solid amber active cell with dark lettering. Footer controls sit above a dedicated system-navigation strip.
+- Rounded Gboard-inspired keys and controls, bundled Google Sans typography, and Light/Dark/System appearance with a solid amber active cell. Footer controls sit above a dedicated system-navigation strip.
 - An **in-app typing test**: prompted sentence, elapsed time, approximate completed-text WPM, text-vs-prompt-prefix accuracy, deletion count, manual reset. No test logs are saved.
 - No network permission, analytics, logging of typed content, clipboard reads, dictionaries, or cloud features.
 
@@ -80,3 +80,7 @@ Android platform IME reference: https://developer.android.com/develop/ui/views/t
 - v0.2: device testing on foldables, landscape, and mainstream controllers; touch feedback, rotation/resizing, custom mappings, larger touch targets
 - v0.3: instrumented **opt-in** usability sessions for WPM, corrected/uncorrected errors and per-mode learning curves, without recording sensitive user text
 - Later: accessibility support, smart punctuation, physical controller deadzone tuning, optional predictions, more layouts
+
+## Keyboard appearance
+
+Open the launcher app and choose **Keyboard appearance**: **Light**, **Dark**, or **System (auto)** (the default). The keyboard, expanded cells, controller toggle and footer use solid rounded Gboard-inspired shapes with the Danzeff amber accent. Google Sans Regular and Medium are bundled from Google's official v14.000 Android font release under SIL OFL 1.1; the full font notice is included in the app credits. System mode follows Android night mode, including changes while the keyboard is open.
