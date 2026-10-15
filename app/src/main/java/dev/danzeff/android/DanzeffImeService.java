@@ -267,18 +267,13 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
         super.onFinishInputView(finishingInput);
     }
     private android.widget.Button tool(String label, Runnable action) {
-        android.widget.Button button = new android.widget.Button(this);
+        com.google.android.material.button.MaterialButton button = AppUi.button(this, label);
         button.setAllCaps(false); button.setText(label); button.setTextSize(13);
         button.setTypeface(getResources().getFont(R.font.google_sans_medium));
         button.setTextColor(KeyboardAppearance.dark(this) ? 0xFFE8EAED : 0xFF202124);
         int padding = Math.round(8 * getResources().getDisplayMetrics().density);
         button.setPadding(padding, 0, padding, 0); button.setMinHeight(0); button.setMinimumHeight(0);
         button.setMinWidth(Math.round(48 * getResources().getDisplayMetrics().density)); button.setMinimumWidth(0);
-        android.graphics.drawable.GradientDrawable shape = new android.graphics.drawable.GradientDrawable();
-        shape.setColor(KeyboardAppearance.dark(this) ? 0xFF3C4043 : 0xFFDEE1E6);
-        shape.setCornerRadius(padding * 2);
-        button.setBackground(new android.graphics.drawable.RippleDrawable(
-                android.content.res.ColorStateList.valueOf(0x66F3C35A), shape, null));
         button.setOnClickListener(v -> { action.run(); syncView(); });
         button.setHeight(Math.round(40 * getResources().getDisplayMetrics().density));
         android.widget.LinearLayout.LayoutParams margins = new android.widget.LinearLayout.LayoutParams(

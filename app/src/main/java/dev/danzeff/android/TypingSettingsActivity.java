@@ -8,7 +8,7 @@ import android.widget.Switch;
 import android.widget.TextView;
 
 /** Only preferences are saved; no dictionary learning or typed-text storage. */
-public final class TypingSettingsActivity extends Activity {
+public final class TypingSettingsActivity extends ThemedActivity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         ScrollView scroll = new ScrollView(this);
@@ -16,9 +16,6 @@ public final class TypingSettingsActivity extends Activity {
         int padding = Math.round(20 * getResources().getDisplayMetrics().density);
         content.setPadding(padding, padding, padding, padding); scroll.addView(content);
         scroll.setBackgroundColor(KeyboardAppearance.background(this)); setContentView(scroll);
-        TextView title = new TextView(this); title.setText("Typing & feedback"); title.setTextSize(24); title.setTypeface(getResources().getFont(R.font.google_sans_medium));
-        title.setTextColor(KeyboardAppearance.dark(this) ? 0xFFE8EAED : 0xFF202124);
-        content.addView(title);
         add(content, "Local English suggestions", "suggestions", true);
         add(content, "Autocorrect on Space (Backspace restores original)", "autocorrect", false);
         add(content, "Smart capitalization", "capitalization", true);
@@ -31,7 +28,7 @@ public final class TypingSettingsActivity extends Activity {
     }
     private void add(LinearLayout parent, String label, String key, boolean fallback) {
         var prefs = getSharedPreferences("danzeff_preferences", 0);
-        Switch control = new Switch(this); control.setText(label); control.setTypeface(getResources().getFont(R.font.google_sans_regular));
+        com.google.android.material.materialswitch.MaterialSwitch control = new com.google.android.material.materialswitch.MaterialSwitch(this); control.setText(label); control.setTypeface(getResources().getFont(R.font.google_sans_regular));
         control.setTextColor(KeyboardAppearance.dark(this) ? 0xFFE8EAED : 0xFF202124);
         control.setChecked(prefs.getBoolean(key, fallback));
         int padding = Math.round(14 * getResources().getDisplayMetrics().density);

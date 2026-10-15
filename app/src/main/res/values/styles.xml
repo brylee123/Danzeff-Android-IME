@@ -1,9 +1,38 @@
 <resources>
-    <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
-        <item name="android:fontFamily">sans</item>
-        <item name="android:colorAccent">#F3C35A</item>
-        <item name="android:statusBarColor">#252525</item>
-        <item name="android:navigationBarColor">#252525</item>
-        <item name="android:windowLightStatusBar">false</item>
+    <style name="AppTheme" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:fontFamily">@font/google_sans_regular</item>
+        <item name="fontFamily">@font/google_sans_regular</item>
+    </style>
+    <style name="AppTheme.Light" parent="Theme.Material3.Light.NoActionBar">
+        <item name="android:fontFamily">@font/google_sans_regular</item>
+        <item name="fontFamily">@font/google_sans_regular</item>
+        <item name="colorPrimary">#735500</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#F9DE9A</item>
+        <item name="colorOnPrimaryContainer">#302400</item>
+        <item name="colorSecondaryContainer">#DEE1E6</item>
+        <item name="colorOnSecondaryContainer">#202124</item>
+        <item name="colorSurface">#F1F3F4</item>
+        <item name="colorOnSurface">#202124</item>
+        <item name="colorSurfaceVariant">#DEE1E6</item>
+        <item name="colorOnSurfaceVariant">#44474B</item><item name="colorOutline">#74777B</item><item name="colorSurfaceContainer">#E7E9EC</item><item name="colorSurfaceContainerHigh">#DEE1E6</item>
+        <item name="android:windowBackground">#F1F3F4</item>
+        <item name="android:colorBackground">#F1F3F4</item>
+    </style>
+    <style name="AppTheme.Dark" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="android:fontFamily">@font/google_sans_regular</item>
+        <item name="fontFamily">@font/google_sans_regular</item>
+        <item name="colorPrimary">#F3C35A</item>
+        <item name="colorOnPrimary">#302400</item>
+        <item name="colorPrimaryContainer">#594400</item>
+        <item name="colorOnPrimaryContainer">#F9DE9A</item>
+        <item name="colorSecondaryContainer">#3C4043</item>
+        <item name="colorOnSecondaryContainer">#E8EAED</item>
+        <item name="colorSurface">#202124</item>
+        <item name="colorOnSurface">#E8EAED</item>
+        <item name="colorSurfaceVariant">#3C4043</item>
+        <item name="colorOnSurfaceVariant">#C4C7C5</item><item name="colorOutline">#8E918F</item><item name="colorSurfaceContainer">#292B2E</item><item name="colorSurfaceContainerHigh">#303134</item>
+        <item name="android:windowBackground">#202124</item>
+        <item name="android:colorBackground">#202124</item>
     </style>
 </resources>

@@ -104,3 +104,7 @@ See [the daily-keyboard roadmap](docs/DAILY_KEYBOARD_ROADMAP.md) for prioritized
 - **Feedback:** optional haptics (off by default, respecting Android's system setting), visible pressed footer states, swipe-sector highlights and a brief committed-cell outline. Configure under **Typing & feedback**, from the launcher or keyboard Settings button.
 
 See [compatibility and reliability coverage](docs/COMPATIBILITY_MATRIX.md). These are prototype implementations, not a claim of comprehensive physical-device or app compatibility.
+
+### Consistent Material appearance
+
+All app screens, profile dialogs, typing switches and keyboard toolbar controls share the Light, Dark or System appearance preference, solid tonal surfaces and Google Sans typography. Credits and bundled help render Markdown natively, including headings, links and tables, without network permission.

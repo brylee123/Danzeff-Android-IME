@@ -19,6 +19,7 @@
         <activity android:name=".ControllerSettingsActivity" android:exported="false"
             android:windowSoftInputMode="stateAlwaysHidden|adjustResize" />
         <activity android:name=".TypingSettingsActivity" android:exported="false" android:windowSoftInputMode="stateAlwaysHidden|adjustResize" />
+        <activity android:name=".DocumentActivity" android:exported="false" />
         <service
             android:name=".DanzeffImeService"
             android:label="Danzeff Keyboard"

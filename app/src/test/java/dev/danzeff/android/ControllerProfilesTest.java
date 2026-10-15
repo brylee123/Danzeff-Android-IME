@@ -1,6 +1,6 @@
 package dev.danzeff.android;
 
-import android.app.AlertDialog;
+import androidx.appcompat.app.AlertDialog;
 import android.content.Context;
 import android.os.Looper;
 import android.view.InputDevice;
@@ -17,7 +17,7 @@ import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
-import org.robolectric.shadows.ShadowAlertDialog;
+import org.robolectric.shadows.ShadowDialog;
 import static org.junit.Assert.*;
 import static org.robolectric.Shadows.shadowOf;
 
@@ -48,38 +48,39 @@ public class ControllerProfilesTest {
     @Test public void captureCancelRenameCopyAndRestoreWorkThroughTheActualEditor() {
         ControllerSettingsActivity activity = Robolectric.buildActivity(ControllerSettingsActivity.class).setup().get();
         click(activity.getWindow().getDecorView(), "Detect device from input");
-        press(ShadowAlertDialog.getLatestAlertDialog(), KeyEvent.KEYCODE_BUTTON_A);
+        press(latestDialog(), KeyEvent.KEYCODE_BUTTON_A);
         shadowOf(Looper.getMainLooper()).idle();
         ControllerProfiles store = new ControllerProfiles(context);
         ControllerProfile defaults = store.active("virtual", "Virtual input");
         assertEquals("slot2", defaults.bindings.get("key:96"));
         click(activity.getWindow().getDecorView(), "Triangle / top character");
-        AlertDialog capture = ShadowAlertDialog.getLatestAlertDialog();
+        AlertDialog capture = latestDialog();
         assertTrue(capture.isShowing());
         capture.getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
         shadowOf(Looper.getMainLooper()).idle();
         assertEquals("slot2", store.active("virtual", "Virtual input").bindings.get("key:96"));
         click(activity.getWindow().getDecorView(), "Triangle / top character");
-        press(ShadowAlertDialog.getLatestAlertDialog(), KeyEvent.KEYCODE_BUTTON_A);
+        press(latestDialog(), KeyEvent.KEYCODE_BUTTON_A);
         assertEquals("slot0", store.active("virtual", "Virtual input").bindings.get("key:96"));
         click(activity.getWindow().getDecorView(), "Rename profile");
-        AlertDialog rename = ShadowAlertDialog.getLatestAlertDialog();
+        AlertDialog rename = latestDialog();
         find(rename.getWindow().getDecorView(), EditText.class).setText("My controller");
         rename.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
         assertEquals("My controller", store.active("virtual", "Virtual input").name);
         click(activity.getWindow().getDecorView(), "Save as new profile");
-        AlertDialog copy = ShadowAlertDialog.getLatestAlertDialog();
+        AlertDialog copy = latestDialog();
         find(copy.getWindow().getDecorView(), EditText.class).setText("Alternate layout");
         copy.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
         assertEquals(2, store.all().size());
         click(activity.getWindow().getDecorView(), "Restore PSP defaults");
-        ShadowAlertDialog.getLatestAlertDialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick();
+        latestDialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick();
         shadowOf(Looper.getMainLooper()).idle();
         assertEquals("slot2", store.active("virtual", "Virtual input").bindings.get("key:96"));
         ControllerProfile original = store.all().stream().filter(p -> p.name.equals("My controller")).findFirst().get();
         assertEquals("slot0", original.bindings.get("key:96"));
         activity.finish();
     }
+    private static AlertDialog latestDialog() { return (AlertDialog) ShadowDialog.getLatestDialog(); }
     private static void press(AlertDialog dialog, int keyCode) {
         dialog.dispatchKeyEvent(new KeyEvent(1, 1, KeyEvent.ACTION_DOWN, keyCode, 0, 0, -1, 0, 0, InputDevice.SOURCE_GAMEPAD));
         shadowOf(Looper.getMainLooper()).idle();
@@ -87,18 +88,18 @@ public class ControllerProfilesTest {
     @Test public void aDelayedCancelCannotDisableNewCaptureAndTriggersCanBeLearned() {
         ControllerSettingsActivity activity = Robolectric.buildActivity(ControllerSettingsActivity.class).setup().get();
         click(activity.getWindow().getDecorView(), "Detect device from input");
-        press(ShadowAlertDialog.getLatestAlertDialog(), KeyEvent.KEYCODE_BUTTON_A);
+        press(latestDialog(), KeyEvent.KEYCODE_BUTTON_A);
         click(activity.getWindow().getDecorView(), "Triangle / top character");
-        ShadowAlertDialog.getLatestAlertDialog().getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
+        latestDialog().getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
         // Open the replacement before the old dialog's dismissal callback runs.
         button(activity.getWindow().getDecorView(), "Triangle / top character").performClick();
         shadowOf(Looper.getMainLooper()).idle();
-        press(ShadowAlertDialog.getLatestAlertDialog(), KeyEvent.KEYCODE_BUTTON_B);
+        press(latestDialog(), KeyEvent.KEYCODE_BUTTON_B);
         ControllerProfiles store = new ControllerProfiles(context);
         assertEquals("slot0", store.active("virtual", "Virtual input").bindings.get("key:97"));
         click(activity.getWindow().getDecorView(), "Hold shift");
         MotionEvent trigger = trigger(.8f);
-        ShadowAlertDialog.getLatestAlertDialog().dispatchGenericMotionEvent(trigger); trigger.recycle();
+        latestDialog().dispatchGenericMotionEvent(trigger); trigger.recycle();
         shadowOf(Looper.getMainLooper()).idle();
         assertEquals("shift_hold", store.active("virtual", "Virtual input").bindings.get("axis:17:+"));
         activity.finish();

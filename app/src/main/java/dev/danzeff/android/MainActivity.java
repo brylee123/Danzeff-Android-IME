@@ -26,12 +26,8 @@ import java.util.List;
 import java.util.Locale;
 
 /** Quick onboarding and in-app WPM/accuracy experiment. No test text is saved. */
-public class MainActivity extends Activity {
-    private static final int BACKGROUND = 0xFF252525;
-    private static final int PANEL = 0xFF4B4B4B;
-    private static final int AQUA = 0xFFF3C35A;
-    private static final int LIGHT = 0xFFF2F7F9;
-    private static final int SECONDARY = 0xFFDDDDDD;
+public class MainActivity extends ThemedActivity {
+    private int BACKGROUND, PANEL, AQUA, LIGHT, SECONDARY;
     private static final String TARGET = "The quick brown fox jumps over the lazy dog.";
 
     private TextView status;
@@ -68,18 +64,12 @@ public class MainActivity extends Activity {
     }
 
     private Button button(String caption) {
-        Button b = new Button(this);
-        b.setText(caption);
-        b.setAllCaps(false);
-        b.setTextColor(BACKGROUND);
-        b.setTextSize(14); b.setTypeface(getResources().getFont(R.font.google_sans_medium));
-        b.setBackground(shape(AQUA, 11));
-        b.setPadding(dp(10), dp(12), dp(10), dp(12));
+        Button b = AppUi.button(this, caption);
         return b;
     }
 
     @Override public void onCreate(Bundle state) {
-        super.onCreate(state);
+        super.onCreate(state); BACKGROUND = KeyboardAppearance.background(this); PANEL = AppUi.panel(this); AQUA = AppUi.accent(this); LIGHT = AppUi.ink(this); SECONDARY = AppUi.secondary(this);
         getWindow().setStatusBarColor(BACKGROUND);
         getWindow().setNavigationBarColor(BACKGROUND);
 
@@ -112,47 +102,29 @@ public class MainActivity extends Activity {
         mapping.setOnClickListener(v -> startActivity(new Intent(this, ControllerSettingsActivity.class)));
         add(layout, mapping, 21);
 
-        Button appearance = button("Keyboard appearance: " + KeyboardAppearance.LABELS[KeyboardAppearance.selected(this)]);
-        appearance.setOnClickListener(v -> new android.app.AlertDialog.Builder(this)
-                .setTitle("Keyboard appearance")
+        Button appearance = button("App & keyboard appearance: " + KeyboardAppearance.LABELS[KeyboardAppearance.selected(this)]);
+        appearance.setOnClickListener(v -> new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setTitle("App & keyboard appearance")
                 .setSingleChoiceItems(KeyboardAppearance.LABELS, KeyboardAppearance.selected(this), (dialog, choice) -> {
                     KeyboardAppearance.select(this, choice);
-                    appearance.setText("Keyboard appearance: " + KeyboardAppearance.LABELS[choice]);
-                    dialog.dismiss();
+                    appearance.setText("App & keyboard appearance: " + KeyboardAppearance.LABELS[choice]);
+                    dialog.dismiss(); recreate();
                 }).setNegativeButton("Cancel", null).show());
         add(layout, appearance, 14);
         Button typingSettings = button("Typing & feedback");
         typingSettings.setOnClickListener(v -> startActivity(new Intent(this, TypingSettingsActivity.class)));
         add(layout, typingSettings, 14);
         Button credits = button("Credits & licenses");
-        credits.setOnClickListener(v -> {
-            try (java.io.InputStream input = getAssets().open("licenses/credits.txt")) {
-                java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
-                byte[] buffer = new byte[4096];
-                int count;
-                while ((count = input.read(buffer)) != -1) bytes.write(buffer, 0, count);
-                String notices = new String(bytes.toByteArray(), java.nio.charset.StandardCharsets.UTF_8);
-                ScrollView noticeScroll = new ScrollView(this);
-                TextView noticeText = text(notices, 13, LIGHT, false);
-                noticeText.setPadding(dp(18), dp(18), dp(18), dp(18));
-                noticeText.setTextIsSelectable(true);
-                noticeScroll.setBackgroundColor(BACKGROUND);
-                noticeScroll.addView(noticeText);
-                new android.app.AlertDialog.Builder(this).setTitle("Credits & licenses")
-                        .setView(noticeScroll).setPositiveButton("Close", null).show();
-            } catch (java.io.IOException e) {
-                new android.app.AlertDialog.Builder(this).setTitle("Credits & licenses")
-                        .setMessage("License notices could not be loaded.").setPositiveButton("Close", null).show();
-            }
-        });
+        credits.setOnClickListener(v -> DocumentActivity.open(this, "Credits & licenses", "licenses/credits.md"));
         add(layout, credits, 14);
+        Button help = button("Help & compatibility"); help.setOnClickListener(v -> DocumentActivity.open(this, "Help & compatibility", "docs/help.md")); add(layout, help, 14);
         add(layout, text("TYPING EXPERIMENT", 15, AQUA, true), 8);
         TextView target = text(TARGET, 17, LIGHT, false);
         target.setPadding(dp(14), dp(14), dp(14), dp(14));
         target.setBackground(shape(PANEL, 9));
         add(layout, target, 11);
 
-        practice = new EditText(this);
+        practice = new com.google.android.material.textfield.TextInputEditText(this);
         practice.setHint("Type the sentence above here…");
         practice.setTextColor(LIGHT);
         practice.setHintTextColor(SECONDARY);
@@ -161,8 +133,8 @@ public class MainActivity extends Activity {
         practice.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE |
                 InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         practice.setPadding(dp(12), dp(12), dp(12), dp(12));
-        practice.setBackground(shape(PANEL, 9));
-        add(layout, practice, 8);
+        com.google.android.material.textfield.TextInputLayout practiceBox = AppUi.input(this, "Typing practice"); practiceBox.addView(practice);
+        add(layout, practiceBox, 8);
         metrics = text("Start typing to measure speed and accuracy.", 14, SECONDARY, false);
         add(layout, metrics, 12);
 

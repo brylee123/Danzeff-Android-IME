@@ -1,7 +1,7 @@
 package dev.danzeff.android;
 
 import android.app.Activity;
-import android.app.AlertDialog;
+import androidx.appcompat.app.AlertDialog;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.InputDevice;
@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.UUID;
 
 /** Local profile editor. Capture is limited to the explicit listening dialog. */
-public final class ControllerSettingsActivity extends Activity {
+public final class ControllerSettingsActivity extends ThemedActivity {
     private ControllerProfiles store;
     private ControllerProfile profile;
     private LinearLayout content;
@@ -45,20 +45,20 @@ public final class ControllerSettingsActivity extends Activity {
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
     private void text(String value, int size) {
         TextView view = new TextView(this); view.setText(value); view.setTextSize(size);
-        view.setTextColor(Color.WHITE); view.setPadding(0, dp(10), 0, dp(10)); content.addView(view);
+        view.setTypeface(getResources().getFont(R.font.google_sans_regular)); view.setTextColor(AppUi.ink(this)); view.setPadding(0, dp(10), 0, dp(10)); content.addView(view);
     }
     private void button(String label, Runnable action) {
-        Button view = new Button(this); view.setText(label); view.setAllCaps(false);
+        Button view = AppUi.button(this, label);
         view.setOnClickListener(v -> action.run()); content.addView(view);
     }
     private void render() {
         int scrollPosition = content != null && content.getParent() instanceof ScrollView
             ? ((ScrollView) content.getParent()).getScrollY() : 0;
-        ScrollView scroll = new ScrollView(this); scroll.setBackgroundColor(0xFF252525);
+        ScrollView scroll = new ScrollView(this); scroll.setBackgroundColor(KeyboardAppearance.background(this));
         content = new LinearLayout(this); content.setOrientation(LinearLayout.VERTICAL);
         content.setPadding(dp(16), dp(16), dp(16), dp(28)); scroll.addView(content); setContentView(scroll);
         scroll.post(() -> scroll.scrollTo(0, scrollPosition));
-        text("Controller & keypad profiles", 24);
+
         text("Connect a Bluetooth or USB device. Choose it below, or detect it by pressing a button. Profiles and changes are saved automatically on this device.", 14);
         button(profile == null ? "Choose input device" : "Device: " + profile.deviceName, this::chooseDevice);
         button("Detect device from input", () -> listen(null));
@@ -67,7 +67,7 @@ public final class ControllerSettingsActivity extends Activity {
         button("Choose saved profile", this::chooseProfile);
         button("Save as new profile", () -> nameDialog(false));
         button("Rename profile", () -> nameDialog(true));
-        button("Restore PSP defaults", () -> new AlertDialog.Builder(this)
+        button("Restore PSP defaults", () -> new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setMessage("Replace this profile's mappings with the defaults?")
             .setNegativeButton("Cancel", null).setPositiveButton("Restore", (dialog, which) -> {
                 profile.bindings.clear(); profile.bindings.putAll(ControllerProfiles.defaults(profile.device, profile.deviceName).bindings);
@@ -77,7 +77,7 @@ public final class ControllerSettingsActivity extends Activity {
         for (String[] action : ControllerProfile.ACTIONS) {
             List<String> bindings = new ArrayList<>();
             profile.bindings.forEach((token, mapped) -> { if (action[0].equals(mapped)) bindings.add(ControllerInput.describe(token)); });
-            Button view = new Button(this); view.setAllCaps(false);
+            Button view = AppUi.button(this, "");
             view.setText(action[1] + "\n" + (bindings.isEmpty() ? "Not mapped" : String.join(" • ", bindings)));
             view.setOnClickListener(v -> listen(action[0]));
             view.setOnLongClickListener(v -> { profile.clear(action[0]); store.save(profile); render(); return true; });
@@ -100,7 +100,7 @@ public final class ControllerSettingsActivity extends Activity {
             descriptors.add(saved.device); names.add(saved.deviceName + " (disconnected)");
         }
         if (names.isEmpty()) { listen(null); return; }
-        new AlertDialog.Builder(this).setTitle("Input device")
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this).setTitle("Input device")
             .setItems(names.toArray(new String[0]), (dialog, which) -> selectDevice(descriptors.get(which), names.get(which).replace(" (disconnected)", "")))
             .setNegativeButton("Cancel", null).show();
     }
@@ -108,15 +108,16 @@ public final class ControllerSettingsActivity extends Activity {
         List<ControllerProfile> profiles = new ArrayList<>();
         for (ControllerProfile saved : store.all()) if (profile.device.equals(saved.device)) profiles.add(saved);
         String[] names = profiles.stream().map(p -> p.name).toArray(String[]::new);
-        new AlertDialog.Builder(this).setTitle("Profiles for " + profile.deviceName)
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this).setTitle("Profiles for " + profile.deviceName)
             .setItems(names, (dialog, which) -> { profile = profiles.get(which); store.save(profile); render(); })
             .setNegativeButton("Cancel", null).show();
     }
     private void nameDialog(boolean rename) {
-        EditText name = new EditText(this); name.setSingleLine(true);
+        EditText name = new com.google.android.material.textfield.TextInputEditText(this); name.setSingleLine(true);
+        com.google.android.material.textfield.TextInputLayout nameBox = AppUi.input(this, "Profile name"); nameBox.addView(name);
         name.setText(rename ? profile.name : profile.name + " copy"); name.selectAll();
-        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(rename ? "Rename profile" : "Save new profile")
-            .setView(name).setNegativeButton("Cancel", null).setPositiveButton("Save", null).create();
+        AlertDialog dialog = new com.google.android.material.dialog.MaterialAlertDialogBuilder(this).setTitle(rename ? "Rename profile" : "Save new profile")
+            .setView(nameBox).setNegativeButton("Cancel", null).setPositiveButton("Save", null).create();
         dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String value = name.getText().toString().trim();
             if (value.isEmpty()) { name.setError("Enter a profile name"); return; }
@@ -133,7 +134,7 @@ public final class ControllerSettingsActivity extends Activity {
     }
     private void listen(String action) {
         pendingAction = action; inputs.reset();
-        listening = new AlertDialog(this) {
+        listening = new AlertDialog(this, com.google.android.material.R.style.ThemeOverlay_Material3_MaterialAlertDialog) {
             @Override public boolean dispatchGenericMotionEvent(MotionEvent event) {
                 return captureMotion(event) || super.dispatchGenericMotionEvent(event);
             }
@@ -149,6 +150,8 @@ public final class ControllerSettingsActivity extends Activity {
         });
         listening.getWindow().addFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM);
         listening.show();
+        listening.getWindow().setBackgroundDrawable(new android.graphics.drawable.InsetDrawable(
+                new com.google.android.material.dialog.MaterialAlertDialogBuilder(this).getBackground(), dp(24)));
     }
     private boolean captureKey(KeyEvent event) {
         if (listening == null || !ControllerInput.eligible(event)) return false;
