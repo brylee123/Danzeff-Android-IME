@@ -8,77 +8,157 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.Typeface;
-
+import android.os.SystemClock;
+import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 
-/** One full-width grid for touch and hardware input. Touch expands a locked group for swipe or tap. */
+/**
+ * One full-width grid for touch and hardware input. Touch expands a locked group for swipe or tap.
+ */
 public final class DanzeffKeyboardView extends View {
     public interface Listener {
-        void onChooseGroup(int row, int col);
-        void onChooseSlot(int slot);
-        void onBackspace(); void onSpace(); void onEnter();
-        void onShift(); void onNumbers(); void onSwitchKeyboard();
-        default void onMoveCursor(int direction) {}
+        void onChooseGroup(final int row, final int col);
+
+        void onChooseSlot(final int slot);
+
+        void onBackspace();
+
+        void onSpace();
+
+        void onEnter();
+
+        void onShift();
+
+        void onNumbers();
+
+        void onSwitchKeyboard();
+
+        default void onMoveCursor(final int direction) {}
     }
-    private int BG, PANEL, CELL, WHITE, INK, AMBER, SECTOR, DIVIDER;
+
+    private int BG;
+    private int PANEL;
+    private int CELL;
+    private int WHITE;
+    private int INK;
+    private int AMBER;
+    private int SECTOR;
+    private int DIVIDER;
 
     private static final String[] FOOTER = {"?123", "⇧", "⌫", "SPACE", "↵", ""};
-    private static final int NONE = 0, GRID = 1, FOOTER_ZONE = 2, POPUP = 3;
+    private static final int NONE = 0;
+    private static final int GRID = 1;
+    private static final int FOOTER_ZONE = 2;
+    private static final int POPUP = 3;
+
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path sector = new Path();
     private final Typeface regular = getResources().getFont(R.font.google_sans_regular);
     private final Typeface bold = getResources().getFont(R.font.google_sans_medium);
     private final Listener listener;
     private final SharedPreferences preferences;
-    private final RectF grid = new RectF(), popup = new RectF();
-    private float headerHeight, footerHeight, bodyTop, bodyBottom;
-    private int layer, selectedRow = 1, selectedCol = 1;
-    private int expandedRow = -1, expandedCol = -1, activePointer = -1;
-    private int touchZone, footerPressed = -1, swipeSlot = -1;
-    private float downX, downY;
+    private final RectF grid = new RectF();
+    private final RectF popup = new RectF();
+
+    private float headerHeight;
+    private float footerHeight;
+    private float bodyTop;
+    private float bodyBottom;
+
+    private int layer;
+    private int selectedRow = 1;
+    private int selectedCol = 1;
+
+    private int expandedRow = -1;
+    private int expandedCol = -1;
+    private int activePointer = -1;
+
+    private int touchZone;
+    private int footerPressed = -1;
+    private int swipeSlot = -1;
+
+    private float downX;
+    private float downY;
+
     private final float swipeThreshold;
     private FieldPolicy editorPolicy;
-    private boolean handlingFooter, footerCanceled, spaceDragging;
+    private boolean handlingFooter;
+    private boolean footerCanceled;
+    private boolean spaceDragging;
+
     private float spaceLastX;
     private int footerPointer = -1;
-    private int flashRow = -1, flashCol = -1;
+    private int flashRow = -1;
+    private int flashCol = -1;
+
     private long flashUntil;
     private boolean repeatingDelete;
-    private final Runnable deleteRepeat = new Runnable() {
-        @Override public void run() {
-            if (!repeatingDelete || footerCanceled) return;
-            listener.onBackspace(); postDelayed(this, 80);
-        }
-    };
-    public void setEditorPolicy(FieldPolicy policy) { editorPolicy = policy; }
-    private String displayCharacter(String value) { return value.isEmpty() ? "" : KeyboardLayout.display(value); }
-    private String characterAt(int row, int col, int slot) {
-        return editorPolicy == null ? KeyboardLayout.at(layer, row, col, slot)
+    private final Runnable deleteRepeat =
+            new Runnable() {
+                @Override
+                public void run() {
+                    if (!repeatingDelete || footerCanceled) {
+                        return;
+                    }
+                    listener.onBackspace();
+                    postDelayed(this, 80);
+                }
+            };
+
+    public void setEditorPolicy(final FieldPolicy policy) {
+        editorPolicy = policy;
+    }
+
+    private String displayCharacter(final String value) {
+        return value.isEmpty() ? "" : KeyboardLayout.display(value);
+    }
+
+    private String characterAt(final int row, final int col, final int slot) {
+        return editorPolicy == null
+                ? KeyboardLayout.at(layer, row, col, slot)
                 : editorPolicy.character(layer, row, col, slot);
     }
-    private void haptic(int feedback) {
-        if (preferences.getBoolean("haptics", false)) performHapticFeedback(feedback);
-    }
-    public void notifyCommitted() {
-        flashRow = selectedRow; flashCol = selectedCol;
-        flashUntil = android.os.SystemClock.uptimeMillis() + 160;
-        haptic(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
-        invalidate(); postInvalidateDelayed(170);
-    }
-    private void stopRepeat() { repeatingDelete = false; removeCallbacks(deleteRepeat); }
 
-    public DanzeffKeyboardView(Context context, Listener callback) {
-        super(context); listener = callback;
+    private void haptic(final int feedback) {
+        if (preferences.getBoolean("haptics", false)) {
+            performHapticFeedback(feedback);
+        }
+    }
+
+    public void notifyCommitted() {
+        flashRow = selectedRow;
+        flashCol = selectedCol;
+        flashUntil = SystemClock.uptimeMillis() + 160;
+        haptic(HapticFeedbackConstants.KEYBOARD_TAP);
+        invalidate();
+        postInvalidateDelayed(170);
+    }
+
+    private void stopRepeat() {
+        repeatingDelete = false;
+        removeCallbacks(deleteRepeat);
+    }
+
+    public DanzeffKeyboardView(final Context context, final Listener callback) {
+        super(context);
+        listener = callback;
         preferences = context.getSharedPreferences("danzeff_preferences", Context.MODE_PRIVATE);
         swipeThreshold = Math.max(d(14), ViewConfiguration.get(context).getScaledTouchSlop());
-        setClickable(true); refreshAppearance();
+        setClickable(true);
+        refreshAppearance();
     }
+
     private final SharedPreferences.OnSharedPreferenceChangeListener appearanceListener =
-            (prefs, key) -> { if (KeyboardAppearance.KEY.equals(key)) refreshAppearance(); };
+            (final SharedPreferences prefs, final String key) -> {
+                if (KeyboardAppearance.KEY.equals(key)) {
+                    refreshAppearance();
+                }
+            };
+
     public void refreshAppearance() {
-        boolean dark = KeyboardAppearance.dark(getContext());
+        final boolean dark = KeyboardAppearance.dark(getContext());
         BG = KeyboardAppearance.background(getContext());
         PANEL = dark ? 0xFF3C4043 : 0xFFDEE1E6;
         CELL = dark ? 0xFF303134 : 0xFFFFFFFF;
@@ -87,249 +167,583 @@ public final class DanzeffKeyboardView extends View {
         INK = 0xFF302400;
         SECTOR = dark ? 0xFFDBAE42 : 0xFFEBCB7A;
         DIVIDER = dark ? 0xFF957533 : 0xFFB49A60;
-        setBackgroundColor(BG); invalidate();
+        setBackgroundColor(BG);
+        invalidate();
     }
-    @Override protected void onAttachedToWindow() {
+
+    @Override
+    protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        preferences.registerOnSharedPreferenceChangeListener(appearanceListener); refreshAppearance();
+        preferences.registerOnSharedPreferenceChangeListener(appearanceListener);
+        refreshAppearance();
     }
-    @Override protected void onDetachedFromWindow() {
+
+    @Override
+    protected void onDetachedFromWindow() {
         stopRepeat();
         preferences.unregisterOnSharedPreferenceChangeListener(appearanceListener);
         super.onDetachedFromWindow();
     }
-    @Override protected void onConfigurationChanged(Configuration configuration) {
-        super.onConfigurationChanged(configuration); resetTouchSelection(); refreshAppearance();
+
+    @Override
+    protected void onConfigurationChanged(final Configuration configuration) {
+        super.onConfigurationChanged(configuration);
+        resetTouchSelection();
+        refreshAppearance();
     }
-    public void updateState(int newLayer, int row, int col) {
-        layer = newLayer; selectedRow = row; selectedCol = col; invalidate();
+
+    public void updateState(final int newLayer, final int row, final int col) {
+        layer = newLayer;
+        selectedRow = row;
+        selectedCol = col;
+        invalidate();
     }
+
     public void resetTouchSelection() {
-        stopRepeat(); handlingFooter = false; footerPointer = -1;
-        expandedRow = expandedCol = -1; activePointer = -1; swipeSlot = -1;
-        touchZone = NONE; footerPressed = -1; invalidate();
+        stopRepeat();
+        handlingFooter = false;
+        footerPointer = -1;
+        expandedRow = expandedCol = -1;
+        activePointer = -1;
+        swipeSlot = -1;
+        touchZone = NONE;
+        footerPressed = -1;
+        invalidate();
     }
-    private float d(float value) { return value * getResources().getDisplayMetrics().density; }
-    private float font(float value) { return value * getResources().getDisplayMetrics().scaledDensity; }
-    @Override protected void onMeasure(int widthSpec, int heightSpec) {
-        boolean landscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
-        setMeasuredDimension(resolveSize(Math.round(d(360)), widthSpec),
-            resolveSize(Math.round(d(landscape ? 242 : 300)), heightSpec));
+
+    private float d(final float value) {
+        return value * getResources().getDisplayMetrics().density;
     }
-    private void geometry(float width, float height) {
-        headerHeight = d(39); footerHeight = d(56);
-        bodyTop = headerHeight + d(5); bodyBottom = height - footerHeight - d(8);
+
+    private float font(final float value) {
+        return value * getResources().getDisplayMetrics().scaledDensity;
+    }
+
+    @Override
+    protected void onMeasure(final int widthSpec, final int heightSpec) {
+        final boolean landscape =
+                getResources().getConfiguration().orientation
+                        == Configuration.ORIENTATION_LANDSCAPE;
+        setMeasuredDimension(
+                resolveSize(Math.round(d(360)), widthSpec),
+                resolveSize(Math.round(d(landscape ? 242 : 300)), heightSpec));
+    }
+
+    private void geometry(final float width, final float height) {
+        headerHeight = d(39);
+        footerHeight = d(56);
+        bodyTop = headerHeight + d(5);
+        bodyBottom = height - footerHeight - d(8);
         grid.set(d(8), bodyTop, width - d(8), bodyBottom);
-        if (expandedRow >= 0) popupGeometry();
+        if (expandedRow >= 0) {
+            popupGeometry();
+        }
     }
-    @Override protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-        super.onSizeChanged(w, h, oldw, oldh); resetTouchSelection(); geometry(w, h);
+
+    @Override
+    protected void onSizeChanged(final int w, final int h, final int oldw, final int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        resetTouchSelection();
+        geometry(w, h);
     }
+
     private void popupGeometry() {
-        float cw = grid.width() / 3, ch = grid.height() / 3;
-        float pw = Math.min(grid.width(), cw * 1.65f), ph = Math.min(grid.height(), ch * 1.65f);
-        float cx = grid.left + (expandedCol + .5f) * cw, cy = grid.top + (expandedRow + .5f) * ch;
-        float left = Math.max(grid.left, Math.min(grid.right - pw, cx - pw / 2));
-        float top = Math.max(grid.top, Math.min(grid.bottom - ph, cy - ph / 2));
+        final float cw = grid.width() / 3;
+        final float ch = grid.height() / 3;
+
+        final float pw = Math.min(grid.width(), cw * 1.65f);
+        final float ph = Math.min(grid.height(), ch * 1.65f);
+
+        final float cx = grid.left + (expandedCol + .5f) * cw;
+        final float cy = grid.top + (expandedRow + .5f) * ch;
+
+        final float left = Math.max(grid.left, Math.min(grid.right - pw, cx - pw / 2));
+        final float top = Math.max(grid.top, Math.min(grid.bottom - ph, cy - ph / 2));
         popup.set(left, top, left + pw, top + ph);
     }
-    private void box(Canvas canvas, int color, RectF rect, float radius) {
-        paint.setStyle(Paint.Style.FILL); paint.setColor(color); canvas.drawRoundRect(rect, radius, radius, paint);
+
+    private void box(final Canvas canvas, final int color, final RectF rect, final float radius) {
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(color);
+        canvas.drawRoundRect(rect, radius, radius, paint);
     }
-    private void box(Canvas canvas, int color, float left, float top, float right, float bottom, float radius) {
-        paint.setStyle(Paint.Style.FILL); paint.setColor(color); canvas.drawRoundRect(left, top, right, bottom, radius, radius, paint);
+
+    private void box(
+            final Canvas canvas,
+            final int color,
+            final float left,
+            final float top,
+            final float right,
+            final float bottom,
+            final float radius) {
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(color);
+        canvas.drawRoundRect(left, top, right, bottom, radius, radius, paint);
     }
-    private void label(Canvas canvas, String value, float x, float y, float size, int color, boolean heavy) {
-        paint.setStyle(Paint.Style.FILL); paint.setColor(color); paint.setTextSize(font(size));
-        paint.setTypeface(heavy ? bold : regular); paint.setTextAlign(Paint.Align.CENTER);
+
+    private void label(
+            final Canvas canvas,
+            final String value,
+            final float x,
+            final float y,
+            final float size,
+            final int color,
+            final boolean heavy) {
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(color);
+        paint.setTextSize(font(size));
+        paint.setTypeface(heavy ? bold : regular);
+        paint.setTextAlign(Paint.Align.CENTER);
         canvas.drawText(value, x, y - (paint.ascent() + paint.descent()) / 2, paint);
     }
-    private void characters(Canvas canvas, RectF bounds, int row, int col, float size, int color) {
-        float cx = bounds.centerX(), cy = bounds.centerY();
-        label(canvas, displayCharacter(characterAt(row, col, 0)), cx, cy - bounds.height() * .29f, size, color, false);
-        label(canvas, displayCharacter(characterAt(row, col, 1)), cx - bounds.width() * .30f, cy, size, color, false);
-        label(canvas, displayCharacter(characterAt(row, col, 2)), cx, cy + bounds.height() * .29f, size, color, false);
-        label(canvas, displayCharacter(characterAt(row, col, 3)), cx + bounds.width() * .30f, cy, size, color, false);
+
+    private void characters(
+            final Canvas canvas,
+            final RectF bounds,
+            final int row,
+            final int col,
+            final float size,
+            final int color) {
+        final float cx = bounds.centerX();
+        final float cy = bounds.centerY();
+
+        label(
+                canvas,
+                displayCharacter(characterAt(row, col, 0)),
+                cx,
+                cy - bounds.height() * .29f,
+                size,
+                color,
+                false);
+        label(
+                canvas,
+                displayCharacter(characterAt(row, col, 1)),
+                cx - bounds.width() * .30f,
+                cy,
+                size,
+                color,
+                false);
+        label(
+                canvas,
+                displayCharacter(characterAt(row, col, 2)),
+                cx,
+                cy + bounds.height() * .29f,
+                size,
+                color,
+                false);
+        label(
+                canvas,
+                displayCharacter(characterAt(row, col, 3)),
+                cx + bounds.width() * .30f,
+                cy,
+                size,
+                color,
+                false);
     }
+
     private final RectF cellBounds = new RectF();
-    @Override protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas); if (getWidth() <= 0 || getHeight() <= 0) return;
+
+    @Override
+    protected void onDraw(final Canvas canvas) {
+        super.onDraw(canvas);
+        if (getWidth() <= 0 || getHeight() <= 0) {
+            return;
+        }
         geometry(getWidth(), getHeight());
         label(canvas, "DANZEFF", d(61), headerHeight / 2, 13, WHITE, true);
-        String hint = swipeSlot >= 0 ? "RELEASE TO TYPE" : expandedRow >= 0 ? "SWIPE OR TAP A CHARACTER" : "HOLD & SWIPE · OR TAP";
+        final String hint =
+                swipeSlot >= 0
+                        ? "RELEASE TO TYPE"
+                        : expandedRow >= 0 ? "SWIPE OR TAP A CHARACTER" : "HOLD & SWIPE · OR TAP";
         label(canvas, hint, getWidth() * .67f, headerHeight / 2, 10, WHITE, false);
-        float cw = grid.width() / 3, ch = grid.height() / 3;
-        for (int row = 0; row < 3; row++) for (int col = 0; col < 3; col++) {
-            cellBounds.set(grid.left + col * cw + d(3), grid.top + row * ch + d(3),
-                grid.left + (col + 1) * cw - d(3), grid.top + (row + 1) * ch - d(3));
-            boolean selected = row == selectedRow && col == selectedCol;
-            box(canvas, selected ? AMBER : CELL, cellBounds, d(12));
-            characters(canvas, cellBounds, row, col, ch < d(55) ? 11 : 15, selected ? INK : WHITE);
-            if (row == flashRow && col == flashCol && android.os.SystemClock.uptimeMillis() < flashUntil) {
-                paint.setStyle(Paint.Style.STROKE); paint.setStrokeWidth(d(2)); paint.setColor(WHITE);
-                canvas.drawRoundRect(cellBounds, d(12), d(12), paint); paint.setStyle(Paint.Style.FILL);
+        final float cw = grid.width() / 3;
+        final float ch = grid.height() / 3;
+
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < 3; col++) {
+                cellBounds.set(
+                        grid.left + col * cw + d(3),
+                        grid.top + row * ch + d(3),
+                        grid.left + (col + 1) * cw - d(3),
+                        grid.top + (row + 1) * ch - d(3));
+                final boolean selected = row == selectedRow && col == selectedCol;
+                box(canvas, selected ? AMBER : CELL, cellBounds, d(12));
+                characters(
+                        canvas, cellBounds, row, col, ch < d(55) ? 11 : 15, selected ? INK : WHITE);
+                if (row == flashRow && col == flashCol && SystemClock.uptimeMillis() < flashUntil) {
+                    paint.setStyle(Paint.Style.STROKE);
+                    paint.setStrokeWidth(d(2));
+                    paint.setColor(WHITE);
+                    canvas.drawRoundRect(cellBounds, d(12), d(12), paint);
+                    paint.setStyle(Paint.Style.FILL);
+                }
             }
         }
 
         drawFooter(canvas);
-        if (expandedRow >= 0) drawPopup(canvas);
+        if (expandedRow >= 0) {
+            drawPopup(canvas);
+        }
     }
-    private void drawPopup(Canvas canvas) {
+
+    private void drawPopup(final Canvas canvas) {
         box(canvas, 0x99000000, grid, 0);
-        box(canvas, INK, popup.left - d(2), popup.top - d(2), popup.right + d(2), popup.bottom + d(2), d(18));
+        box(
+                canvas,
+                INK,
+                popup.left - d(2),
+                popup.top - d(2),
+                popup.right + d(2),
+                popup.bottom + d(2),
+                d(18));
         box(canvas, AMBER, popup, d(16));
-        int popupSave = canvas.save();
-        Path popupClip = new Path(); popupClip.addRoundRect(popup, d(16), d(16), Path.Direction.CW);
+        final int popupSave = canvas.save();
+        final Path popupClip = new Path();
+        popupClip.addRoundRect(popup, d(16), d(16), Path.Direction.CW);
         canvas.clipPath(popupClip);
         if (swipeSlot >= 0) {
-            sector.reset(); sector.moveTo(popup.centerX(), popup.centerY());
+            sector.reset();
+            sector.moveTo(popup.centerX(), popup.centerY());
             switch (swipeSlot) {
-                case 0: sector.lineTo(popup.left, popup.top); sector.lineTo(popup.right, popup.top); break;
-                case 1: sector.lineTo(popup.left, popup.bottom); sector.lineTo(popup.left, popup.top); break;
-                case 2: sector.lineTo(popup.right, popup.bottom); sector.lineTo(popup.left, popup.bottom); break;
-                default: sector.lineTo(popup.right, popup.top); sector.lineTo(popup.right, popup.bottom); break;
+                case 0:
+                    sector.lineTo(popup.left, popup.top);
+                    sector.lineTo(popup.right, popup.top);
+                    break;
+                case 1:
+                    sector.lineTo(popup.left, popup.bottom);
+                    sector.lineTo(popup.left, popup.top);
+                    break;
+                case 2:
+                    sector.lineTo(popup.right, popup.bottom);
+                    sector.lineTo(popup.left, popup.bottom);
+                    break;
+                default:
+                    sector.lineTo(popup.right, popup.top);
+                    sector.lineTo(popup.right, popup.bottom);
+                    break;
             }
-            sector.close(); paint.setColor(SECTOR); canvas.drawPath(sector, paint);
+            sector.close();
+            paint.setColor(SECTOR);
+            canvas.drawPath(sector, paint);
         }
-        paint.setColor(DIVIDER); paint.setStrokeWidth(d(1));
-        canvas.drawLine(popup.left + d(4), popup.top + d(4), popup.right - d(4), popup.bottom - d(4), paint);
-        canvas.drawLine(popup.left + d(4), popup.bottom - d(4), popup.right - d(4), popup.top + d(4), paint);
+        paint.setColor(DIVIDER);
+        paint.setStrokeWidth(d(1));
+        canvas.drawLine(
+                popup.left + d(4),
+                popup.top + d(4),
+                popup.right - d(4),
+                popup.bottom - d(4),
+                paint);
+        canvas.drawLine(
+                popup.left + d(4),
+                popup.bottom - d(4),
+                popup.right - d(4),
+                popup.top + d(4),
+                paint);
         canvas.restoreToCount(popupSave);
         characters(canvas, popup, expandedRow, expandedCol, 22, INK);
     }
-    private void drawFooter(Canvas canvas) {
-        float width = getWidth() / 6f, top = getHeight() - footerHeight + d(3), bottom = getHeight() - d(5);
+
+    private void drawFooter(final Canvas canvas) {
+        final float width = getWidth() / 6f;
+        final float top = getHeight() - footerHeight + d(3);
+        final float bottom = getHeight() - d(5);
+
         for (int i = 0; i < 6; i++) {
-            float left = i * width + d(2), right = (i + 1) * width - d(2), cx = (left + right) / 2, cy = (top + bottom) / 2;
-            box(canvas, i == footerPressed && handlingFooter && !footerCanceled || i == 3 ? AMBER : PANEL, left, top, right, bottom, d(22));
+            final float left = i * width + d(2);
+            final float right = (i + 1) * width - d(2);
+            final float cx = (left + right) / 2;
+            final float cy = (top + bottom) / 2;
+
+            box(
+                    canvas,
+                    i == footerPressed && handlingFooter && !footerCanceled || i == 3
+                            ? AMBER
+                            : PANEL,
+                    left,
+                    top,
+                    right,
+                    bottom,
+                    d(22));
             if (i == 5) {
                 // A monochrome globe keeps the solid palette and avoids color emoji fonts.
-                paint.setStyle(Paint.Style.STROKE); paint.setColor(i == footerPressed && handlingFooter && !footerCanceled ? INK : WHITE); paint.setStrokeWidth(d(1.3f));
-                float radius = d(10); canvas.drawCircle(cx, cy, radius, paint);
-                canvas.drawOval(cx - radius * .45f, cy - radius, cx + radius * .45f, cy + radius, paint);
-                canvas.drawLine(cx - radius, cy, cx + radius, cy, paint); paint.setStyle(Paint.Style.FILL);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setColor(
+                        i == footerPressed && handlingFooter && !footerCanceled ? INK : WHITE);
+                paint.setStrokeWidth(d(1.3f));
+                final float radius = d(10);
+                canvas.drawCircle(cx, cy, radius, paint);
+                canvas.drawOval(
+                        cx - radius * .45f, cy - radius, cx + radius * .45f, cy + radius, paint);
+                canvas.drawLine(cx - radius, cy, cx + radius, cy, paint);
+                paint.setStyle(Paint.Style.FILL);
             } else {
-                String text = i == 0 ? (layer >= 2 ? "ABC" : "?123") : i == 1 ? (layer == KeyboardLayout.DIGITS ? "SYM" : layer == KeyboardLayout.SYMBOLS ? "EX+" : layer == KeyboardLayout.EXTRA_SYMBOLS ? "123" : layer == KeyboardLayout.UPPER ? "⇧ ON" : "⇧") : i == 4 && editorPolicy != null ? editorPolicy.enterLabel : FOOTER[i];
-                label(canvas, text, cx, cy, i == 3 || text.length() > 4 ? 11 : 13, i == footerPressed && handlingFooter && !footerCanceled || i == 3 ? INK : WHITE, false);
+                final String text =
+                        i == 0
+                                ? (layer >= 2 ? "ABC" : "?123")
+                                : i == 1
+                                        ? (layer == KeyboardLayout.DIGITS
+                                                ? "SYM"
+                                                : layer == KeyboardLayout.SYMBOLS
+                                                        ? "EX+"
+                                                        : layer == KeyboardLayout.EXTRA_SYMBOLS
+                                                                ? "123"
+                                                                : layer == KeyboardLayout.UPPER
+                                                                        ? "⇧ ON"
+                                                                        : "⇧")
+                                        : i == 4 && editorPolicy != null
+                                                ? editorPolicy.enterLabel
+                                                : FOOTER[i];
+                label(
+                        canvas,
+                        text,
+                        cx,
+                        cy,
+                        i == 3 || text.length() > 4 ? 11 : 13,
+                        i == footerPressed && handlingFooter && !footerCanceled || i == 3
+                                ? INK
+                                : WHITE,
+                        false);
             }
         }
     }
-    private int cellRow(float y) { return Math.max(0, Math.min(2, (int) ((y - grid.top) * 3 / grid.height()))); }
-    private int cellCol(float x) { return Math.max(0, Math.min(2, (int) ((x - grid.left) * 3 / grid.width()))); }
-    private int direction(float dx, float dy) { return Math.abs(dy) >= Math.abs(dx) ? (dy < 0 ? 0 : 2) : (dx < 0 ? 1 : 3); }
-    private int popupSlot(float x, float y) {
-        if (!popup.contains(x, y)) return -1;
-        float dx = x - popup.centerX(), dy = y - popup.centerY();
-        if (Math.hypot(dx, dy) < d(12)) return -1;
+
+    private int cellRow(final float y) {
+        return Math.max(0, Math.min(2, (int) ((y - grid.top) * 3 / grid.height())));
+    }
+
+    private int cellCol(final float x) {
+        return Math.max(0, Math.min(2, (int) ((x - grid.left) * 3 / grid.width())));
+    }
+
+    private int direction(final float dx, final float dy) {
+        return Math.abs(dy) >= Math.abs(dx) ? (dy < 0 ? 0 : 2) : (dx < 0 ? 1 : 3);
+    }
+
+    private int popupSlot(final float x, final float y) {
+        if (!popup.contains(x, y)) {
+            return -1;
+        }
+        final float dx = x - popup.centerX();
+        final float dy = y - popup.centerY();
+
+        if (Math.hypot(dx, dy) < d(12)) {
+            return -1;
+        }
         return direction(dx / popup.width(), dy / popup.height());
     }
-    private int zone(float x, float y) {
-        if (y >= getHeight() - footerHeight && y <= getHeight() && x >= 0 && x < getWidth()) return FOOTER_ZONE;
-        if (grid.contains(x, y)) return GRID;
+
+    private int zone(final float x, final float y) {
+        if (y >= getHeight() - footerHeight && y <= getHeight() && x >= 0 && x < getWidth()) {
+            return FOOTER_ZONE;
+        }
+        if (grid.contains(x, y)) {
+            return GRID;
+        }
         return NONE;
     }
-    private void expand(float x, float y) {
-        expandedRow = cellRow(y); expandedCol = cellCol(x); swipeSlot = -1;
-        listener.onChooseGroup(expandedRow, expandedCol); popupGeometry();
-        haptic(android.view.HapticFeedbackConstants.CLOCK_TICK); invalidate();
+
+    private void expand(final float x, final float y) {
+        expandedRow = cellRow(y);
+        expandedCol = cellCol(x);
+        swipeSlot = -1;
+        listener.onChooseGroup(expandedRow, expandedCol);
+        popupGeometry();
+        haptic(HapticFeedbackConstants.CLOCK_TICK);
+        invalidate();
     }
+
     private void resetAfterCharacter() {
-        resetTouchSelection(); listener.onChooseGroup(1, 1);
+        resetTouchSelection();
+        listener.onChooseGroup(1, 1);
     }
-    private void commitSlot(int slot) {
-        if (slot < 0 || characterAt(expandedRow, expandedCol, slot).isEmpty()) return;
-        listener.onChooseGroup(expandedRow, expandedCol); listener.onChooseSlot(slot); resetAfterCharacter();
+
+    private void commitSlot(final int slot) {
+        if (slot < 0 || characterAt(expandedRow, expandedCol, slot).isEmpty()) {
+            return;
+        }
+        listener.onChooseGroup(expandedRow, expandedCol);
+        listener.onChooseSlot(slot);
+        resetAfterCharacter();
     }
-    private void footerAction(int column) {
+
+    private void footerAction(final int column) {
         switch (column) {
-            case 0: listener.onNumbers(); break; case 1: listener.onShift(); break;
-            case 2: listener.onBackspace(); break; case 3: listener.onSpace(); break;
-            case 4: listener.onEnter(); break; case 5: listener.onSwitchKeyboard(); break;
+            case 0:
+                listener.onNumbers();
+                break;
+            case 1:
+                listener.onShift();
+                break;
+            case 2:
+                listener.onBackspace();
+                break;
+            case 3:
+                listener.onSpace();
+                break;
+            case 4:
+                listener.onEnter();
+                break;
+            case 5:
+                listener.onSwitchKeyboard();
+                break;
         }
     }
-    @Override public boolean onTouchEvent(MotionEvent event) {
+
+    @Override
+    public boolean onTouchEvent(final MotionEvent event) {
         geometry(getWidth(), getHeight());
-        if (event.getActionMasked() == MotionEvent.ACTION_DOWN && zone(event.getX(), event.getY()) == FOOTER_ZONE) {
+        if (event.getActionMasked() == MotionEvent.ACTION_DOWN
+                && zone(event.getX(), event.getY()) == FOOTER_ZONE) {
             expandedRow = expandedCol = -1;
-            handlingFooter = true; footerCanceled = spaceDragging = false;
+            handlingFooter = true;
+            footerCanceled = spaceDragging = false;
             footerPointer = event.getPointerId(0);
-            footerPressed = (int) (6 * event.getX() / getWidth()); spaceLastX = event.getX();
+            footerPressed = (int) (6 * event.getX() / getWidth());
+            spaceLastX = event.getX();
             if (footerPressed == 2) {
-                repeatingDelete = true; listener.onBackspace(); postDelayed(deleteRepeat, 450);
+                repeatingDelete = true;
+                listener.onBackspace();
+                postDelayed(deleteRepeat, 450);
             }
-            invalidate(); return true;
+            invalidate();
+            return true;
         }
-        if (handlingFooter) return footerTouch(event);
-        int action = event.getActionMasked();
-        if (action == MotionEvent.ACTION_CANCEL) { resetAfterCharacter(); return true; }
+        if (handlingFooter) {
+            return footerTouch(event);
+        }
+        final int action = event.getActionMasked();
+        if (action == MotionEvent.ACTION_CANCEL) {
+            resetAfterCharacter();
+            return true;
+        }
         if (action == MotionEvent.ACTION_DOWN) {
-            activePointer = event.getPointerId(0); downX = event.getX(); downY = event.getY(); swipeSlot = -1;
-            if (expandedRow >= 0 && popup.contains(downX, downY)) touchZone = POPUP;
-            else {
+            activePointer = event.getPointerId(0);
+            downX = event.getX();
+            downY = event.getY();
+            swipeSlot = -1;
+            if (expandedRow >= 0 && popup.contains(downX, downY)) {
+                touchZone = POPUP;
+            } else {
                 touchZone = zone(downX, downY);
-                if (touchZone == GRID) expand(downX, downY);
-                else if (expandedRow >= 0) { expandedRow = expandedCol = -1; listener.onChooseGroup(1, 1); invalidate(); }
+                if (touchZone == GRID) {
+                    expand(downX, downY);
+                } else if (expandedRow >= 0) {
+                    expandedRow = expandedCol = -1;
+                    listener.onChooseGroup(1, 1);
+                    invalidate();
+                }
             }
             footerPressed = touchZone == FOOTER_ZONE ? (int) (6 * downX / getWidth()) : -1;
             return true;
         }
-        int index = event.findPointerIndex(activePointer);
-        if (index < 0) return true;
-        float x = event.getX(index), y = event.getY(index);
+        final int index = event.findPointerIndex(activePointer);
+        if (index < 0) {
+            return true;
+        }
+        final float x = event.getX(index);
+        final float y = event.getY(index);
+
         if (action == MotionEvent.ACTION_MOVE && (touchZone == GRID || touchZone == POPUP)) {
-            float dx = x - downX, dy = y - downY;
+            final float dx = x - downX;
+            final float dy = y - downY;
+
             swipeSlot = Math.hypot(dx, dy) >= swipeThreshold ? direction(dx, dy) : -1;
-            invalidate(); return true;
+            invalidate();
+            return true;
         }
         if ((action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP)
                 && event.getPointerId(event.getActionIndex()) == activePointer) {
             if (touchZone == GRID || touchZone == POPUP) {
-                float dx = x - downX, dy = y - downY;
+                final float dx = x - downX;
+                final float dy = y - downY;
+
                 if (Math.hypot(dx, dy) >= swipeThreshold) {
-                    if (x >= 0 && x < getWidth() && y >= 0 && y < bodyBottom) commitSlot(direction(dx, dy));
-                    else resetAfterCharacter();
-                } else if (touchZone == POPUP) commitSlot(popupSlot(x, y));
+                    if (x >= 0 && x < getWidth() && y >= 0 && y < bodyBottom) {
+                        commitSlot(direction(dx, dy));
+                    } else {
+                        resetAfterCharacter();
+                    }
+                } else if (touchZone == POPUP) {
+                    commitSlot(popupSlot(x, y));
+                }
                 // A first tap leaves the expanded cell open for the second character tap.
-            } else if (touchZone == FOOTER_ZONE && zone(x, y) == FOOTER_ZONE
+            } else if (touchZone == FOOTER_ZONE
+                    && zone(x, y) == FOOTER_ZONE
                     && (int) (6 * x / getWidth()) == footerPressed) {
                 footerAction(footerPressed);
             }
-            activePointer = -1; swipeSlot = -1; touchZone = NONE; invalidate(); performClick();
+            activePointer = -1;
+            swipeSlot = -1;
+            touchZone = NONE;
+            invalidate();
+            performClick();
         }
         return true;
     }
-    private boolean footerTouch(MotionEvent event) {
-        int action = event.getActionMasked();
-        if (action == MotionEvent.ACTION_CANCEL) { resetTouchSelection(); return true; }
-        int index = event.findPointerIndex(footerPointer);
-        if (index < 0) { resetTouchSelection(); return true; }
-        float x = event.getX(index), y = event.getY(index);
+
+    private boolean footerTouch(final MotionEvent event) {
+        final int action = event.getActionMasked();
+        if (action == MotionEvent.ACTION_CANCEL) {
+            resetTouchSelection();
+            return true;
+        }
+        final int index = event.findPointerIndex(footerPointer);
+        if (index < 0) {
+            resetTouchSelection();
+            return true;
+        }
+        final float x = event.getX(index);
+        final float y = event.getY(index);
+
         if (action == MotionEvent.ACTION_MOVE) {
             if (footerPressed == 3 && !footerCanceled) {
-                float delta = x - spaceLastX;
-                int steps = Math.min(20, (int) (Math.abs(delta) / d(18)));
+                final float delta = x - spaceLastX;
+                final int steps = Math.min(20, (int) (Math.abs(delta) / d(18)));
                 if (steps > 0) {
-                    spaceDragging = true; int direction = delta < 0 ? -1 : 1;
-                    for (int i = 0; i < steps; i++) listener.onMoveCursor(direction);
+                    spaceDragging = true;
+                    final int direction = delta < 0 ? -1 : 1;
+                    for (int i = 0; i < steps; i++) {
+                        listener.onMoveCursor(direction);
+                    }
                     spaceLastX += direction * steps * d(18);
-                    haptic(android.view.HapticFeedbackConstants.CLOCK_TICK);
+                    haptic(HapticFeedbackConstants.CLOCK_TICK);
                 }
-                if (y < getHeight() - footerHeight - d(24) || y > getHeight() + d(24)) footerCanceled = true;
+                if (y < getHeight() - footerHeight - d(24) || y > getHeight() + d(24)) {
+                    footerCanceled = true;
+                }
             } else if (zone(x, y) != FOOTER_ZONE || (int) (6 * x / getWidth()) != footerPressed) {
-                footerCanceled = true; stopRepeat();
+                footerCanceled = true;
+                stopRepeat();
             }
-            invalidate(); return true;
+            invalidate();
+            return true;
         }
         if ((action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP)
                 && event.getPointerId(event.getActionIndex()) == footerPointer) {
-            int pressed = footerPressed;
-            boolean commit = !footerCanceled && !spaceDragging && pressed != 2
-                    && zone(x, y) == FOOTER_ZONE && (int) (6 * x / getWidth()) == pressed;
-            stopRepeat(); handlingFooter = false; footerPressed = -1; footerPointer = -1;
-            if (commit) footerAction(pressed);
-            invalidate(); performClick();
+            final int pressed = footerPressed;
+            final boolean commit =
+                    !footerCanceled
+                            && !spaceDragging
+                            && pressed != 2
+                            && zone(x, y) == FOOTER_ZONE
+                            && (int) (6 * x / getWidth()) == pressed;
+            stopRepeat();
+            handlingFooter = false;
+            footerPressed = -1;
+            footerPointer = -1;
+            if (commit) {
+                footerAction(pressed);
+            }
+            invalidate();
+            performClick();
         }
         return true;
     }
-    @Override public boolean performClick() { super.performClick(); return true; }
+
+    @Override
+    public boolean performClick() {
+        super.performClick();
+        return true;
+    }
 }

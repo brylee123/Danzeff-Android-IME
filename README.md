@@ -108,3 +108,24 @@ See [compatibility and reliability coverage](docs/COMPATIBILITY_MATRIX.md). Thes
 ### Consistent Material appearance
 
 All app screens, profile dialogs, typing switches and keyboard toolbar controls share the Light, Dark or System appearance preference, solid tonal surfaces and Google Sans typography. Credits and bundled help render Markdown natively, including headings, links and tables, without network permission.
+
+## Java style and checks
+
+Java follows 4-space indentation, same-line braces, 100-column wrapping, and 8-space continuations using SHA-256-pinned **google-java-format 1.28.0 in AOSP mode**. Parameters, explicit lambda parameters, catch parameters, resources, and stable local/field bindings are final by default. Types/imports are explicit, declarations are separate, and control-flow bodies use braces. Real algorithm and Android lifecycle state remains mutable. See [AGENTS.md](AGENTS.md) for the complete conventions.
+
+Use Python 3 and JDK 17+ (`JAVA_HOME` or `java` on PATH):
+
+```text
+python tools/format_java.py
+python tools/format_java.py --check
+```
+
+The first run downloads the official formatter into ignored `.gradle/style` and verifies its pinned SHA-256. Supply `--formatter-jar PATH` for an offline run or `--java PATH` for an explicit JDK executable. The JDK syntax-tree checker needs no Android SDK or parser dependency. It checks final parameters/resources, explicit lambda types, absence of `var`/wildcard imports, single declarations, and braced control flow. The formatter changes layout/imports, not declaration semantics. Compiler checks, code review, and behavioral tests remain necessary for definite assignment and lifecycle correctness.
+
+Style-tool regression checks:
+
+```text
+python -m unittest discover -s tools -p test_java_style.py
+```
+
+Existing Android Gradle commands and the portable `KeyboardLayoutCheck` / `ControllerProfileCheck` javac/java checks remain unchanged.

@@ -28,3 +28,7 @@ keystore.properties
 secrets.properties
 .env
 .env.*
+
+# Python style tooling
+__pycache__/
+*.py[cod]
