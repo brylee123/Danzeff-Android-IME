@@ -8,6 +8,8 @@ Touch a cell to expand it. Keep your finger down, drag toward a character, and r
 
 Use the numbers and symbols controls to change pages. Hold Delete to erase repeatedly. Drag Space to move the cursor. Tap **Edit** for selection, copy, cut and paste.
 
+The full-width swipe/tap grid stays visible with or without a controller. There is no separate face-button panel.
+
 ## Controllers and keypads
 
 Connect a Bluetooth or USB controller. Open **Controller & keypad profiles**, choose your device or tap **Detect device from input**, then press a button.

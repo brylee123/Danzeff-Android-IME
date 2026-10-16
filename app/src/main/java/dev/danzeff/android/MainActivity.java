@@ -150,7 +150,7 @@ public class MainActivity extends ThemedActivity {
         });
         add(layout, reset, 16);
 
-        add(layout, text("TOUCH: Touch a cell to expand it, keep your finger down, and swipe up, left, down or right. Release to type. Or tap a cell, lift your finger, then tap a character in the expanded cell. The grid resets after each character.\n\nWith a controller connected, the original grid and face-button layout remains available.\n\nGAMEPAD: Left stick selects a group; Y/X/A/B selects top/left/bottom/right. L1 switches letters/numbers; hold R1 to shift. D-pad up deletes, down inserts a new line, and left/right moves the cursor. Use Controller & keypad profiles to remap inputs and save device profiles.",
+        add(layout, text("TOUCH: Touch a cell to expand it, keep your finger down, and swipe up, left, down or right. Release to type. Or tap a cell, lift your finger, then tap a character in the expanded cell. The grid resets after each character.\n\nThe same full-width swipe/tap grid stays visible with a controller connected.\n\nGAMEPAD: Left stick selects a group; Y/X/A/B selects top/left/bottom/right. L1 switches letters/numbers; hold R1 to shift. D-pad up deletes, down inserts a new line, and left/right moves the cursor. Use Controller & keypad profiles to remap inputs and save device profiles.",
                 13, SECONDARY, false), 14);
         add(layout, text("Offline experimental keyboard. No internet permission or typed-text logging. Local English suggestions are available; autocorrect is optional and off by default. Use Typing & feedback to configure it.",
                 12, SECONDARY, false), 0);

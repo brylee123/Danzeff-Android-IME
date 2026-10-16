@@ -45,16 +45,16 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
     private final Map<String, String> lastInput = new HashMap<>();
     private final Map<String, Long> lastActionTime = new HashMap<>();
     private InputManager inputManager;
-    private boolean controllerLayout;
+
     private final InputManager.InputDeviceListener deviceListener = new InputManager.InputDeviceListener() {
-        @Override public void onInputDeviceAdded(int id) { refreshControllerLayout(); }
+        @Override public void onInputDeviceAdded(int id) { if (keyboard != null) keyboard.resetTouchSelection(); syncView(); }
         @Override public void onInputDeviceChanged(int id) { onInputDeviceRemoved(id); }
         @Override public void onInputDeviceRemoved(int id) {
             String prefix = id + ":";
             heldShift.removeIf(token -> token.startsWith(prefix));
             consumedKeys.removeIf(token -> token.startsWith(prefix));
             if (repeatInput != null && repeatInput.startsWith(prefix)) stopDeleteRepeat();
-            controllerInput.forget(id); syncView(); refreshControllerLayout();
+            controllerInput.forget(id); if (keyboard != null) keyboard.resetTouchSelection(); syncView();
         }
     };
 
@@ -76,7 +76,6 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
         profiles = new ControllerProfiles(this);
         keyboard = new DanzeffKeyboardView(this, this);
         syncView();
-        refreshControllerLayout();
         FrameLayout container = new FrameLayout(this); keyboardContainer = container;
         container.setBackgroundColor(KeyboardAppearance.background(this));
         android.widget.LinearLayout stack = new android.widget.LinearLayout(this);
@@ -125,7 +124,6 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
         consumedKeys.clear();
         lastInput.clear(); lastActionTime.clear();
         if (keyboard != null) keyboard.resetTouchSelection();
-        refreshControllerLayout();
         syncView();
     }
 
@@ -162,23 +160,6 @@ public class DanzeffImeService extends InputMethodService implements DanzeffKeyb
             keyboard.updateState(currentLayer(), row, col);
         }
         updateToolbar();
-    }
-
-    private void refreshControllerLayout() {
-        if (keyboard == null) return;
-        boolean connected = false;
-        Set<String> configuredDevices = new HashSet<>();
-        if (profiles != null) for (ControllerProfile saved : profiles.all()) configuredDevices.add(saved.device);
-        for (int id : InputDevice.getDeviceIds()) {
-            InputDevice device = InputDevice.getDevice(id);
-            if (device != null && !device.isVirtual() && (device.supportsSource(InputDevice.SOURCE_GAMEPAD)
-                    || device.supportsSource(InputDevice.SOURCE_JOYSTICK)
-                    || (ControllerInput.external(device) && configuredDevices.contains(device.getDescriptor())))) {
-                connected = true; break;
-            }
-        }
-        if (controllerLayout != connected) { row = col = 1; controllerLayout = connected; }
-        keyboard.setControllerConnected(connected); syncView();
     }
 
     @Override public void onChooseGroup(int newRow, int newCol) {

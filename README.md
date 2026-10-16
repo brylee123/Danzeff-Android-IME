@@ -1,13 +1,13 @@
-# Danzeff Android IME — proof of concept v0.6
+# Danzeff Android IME — proof of concept v0.7
 
-An **actual Android system keyboard** (InputMethodService), not a mockup or a text-editor-only control. Original Danzeff-style 3x3 groups and four face-button positions, written from scratch in Java with native Android APIs. No UI library or third-party runtime dependencies.
+An **actual Android system keyboard** (InputMethodService), not a mockup or a text-editor-only control. Original Danzeff-style 3x3 groups with top/left/bottom/right character slots, written in Java with Material 3 controls and native Markdown rendering.
 
 ## What works
 
 - **System-wide** IME for Android 8.0+ (API 26+, 64-bit/32-bit Android compatible).
-- **One-handed touch keyboard** when no controller is connected: touch a cell to expand it immediately, keep your finger down and swipe up/left/down/right, then release to type. The original cell stays locked even if the swipe crosses other cells.
+- **One-handed touch keyboard**, with or without a controller: touch a cell to expand it immediately, keep your finger down and swipe up/left/down/right, then release to type. The original cell stays locked even if the swipe crosses other cells.
 - **Tap selection alongside swiping**: tap a cell, lift your finger, then tap a character in its enlarged popup. Both gestures are always available; no mode toggle is needed. The popup closes and the grid resets after each character. An empty numeric slot does not type; a canceled gesture or a swipe into the footer does not type.
-- With a controller connected, the original grid and four face buttons remain available, including its two-step/direct-touch header toggle. Saved profiles still handle physical input independently.
+- The full-width swipe/tap grid remains the same with a controller or keypad connected. Hardware profiles select groups and characters independently; there is no separate face-button panel or touch-mode toggle.
 - PSP-style **lowercase, uppercase, digits, and symbols** pages (ASCII; layout from DanzeffOSLib's `modeChar`). One-shot shift for letters.
 - Backspace, space, context-aware enter/IME action, keyboard picker, and switch-to-next-keyboard.
 - **Bluetooth/USB controller and keypad profiles**: assign buttons, stick positions, D-pad hats and triggers to Danzeff actions, save copies, rename profiles and select an active profile independently for each input device. Actual Android controller mapping varies; needs hardware testing.
@@ -39,9 +39,9 @@ Stick directions are captured as the nine left-stick positions; other axes captu
 
 ## Input specifics
 
-Danzeff slots are **TOP / LEFT / BOTTOM / RIGHT**, in source order `TRIANGLE / SQUARE / CROSS / CIRCLE`. Without a controller, all nine cells use the keyboard's full width. A selected cell expands to 165% of its usual dimensions, constrained to the grid so edge cells remain visible. Swipe direction is measured from the initial finger position; a 14dp minimum movement (or the device's touch slop, whichever is greater) distinguishes a swipe from a tap. Character selection commits on finger release. A second tap chooses a compass sector in the expanded cell; tapping its blank center does not insert text. To type **a**, touch the top-left cell and swipe left, or tap that cell and tap **a** in the enlarged popup. After insertion, the popup closes and the selected group returns to center. The center cell's top character is delete, bottom is space, left is M/m and right N/n.
+Danzeff slots are **TOP / LEFT / BOTTOM / RIGHT**, in source order `TRIANGLE / SQUARE / CROSS / CIRCLE`. All nine cells always use the keyboard's full width, regardless of connected input devices. A selected cell expands to 165% of its usual dimensions, constrained to the grid so edge cells remain visible. Swipe direction is measured from the initial finger position; a 14dp minimum movement (or the device's touch slop, whichever is greater) distinguishes a swipe from a tap. Character selection commits on finger release. A second tap chooses a compass sector in the expanded cell; tapping its blank center does not insert text. To type **a**, touch the top-left cell and swipe left, or tap that cell and tap **a** in the enlarged popup. After insertion, the popup closes and the selected group returns to center. The center cell's top character is delete, bottom is space, left is M/m and right N/n.
 
-Connecting a gamepad or joystick restores the right-side face buttons; disconnecting restores the one-handed touch layout. A configured external keypad also uses the controller layout. Virtual/injected input devices do not change the touch layout. Changing device/layout or canceling a touch discards any incomplete gesture. Numbers, shift, delete, space, enter and the monochrome globe stay in the footer, above Android's navigation controls.
+Connecting or disconnecting a gamepad or keypad never changes the grid layout. Input-device changes and canceled touches discard incomplete gestures. Numbers, shift, delete, space, enter and the monochrome globe stay in the footer, above Android's navigation controls.
 
 On the original numeric page, the number is usually on the **RIGHT** (circle); **0** is the bottom character of the bottom-right group. Shift while on the numeric page reveals symbols. Enter, space, delete have always-accessible dedicated footer buttons.
 

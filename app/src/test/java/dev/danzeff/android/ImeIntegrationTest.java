@@ -93,8 +93,13 @@ public class ImeIntegrationTest {
         touch(MotionEvent.ACTION_DOWN, 300, y); touch(MotionEvent.ACTION_MOVE, 60, y);
         count = ime.editor.text.length(); shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1)); assertEquals(count, ime.editor.text.length());
         touch(MotionEvent.ACTION_UP, 60, y);
-        keyboard.setControllerConnected(true);
-        touch(MotionEvent.ACTION_DOWN, 300, y); keyboard.setControllerConnected(false);
+
+        touch(MotionEvent.ACTION_DOWN, 300, y);
+        java.lang.reflect.Field listenerField;
+        try {
+            listenerField = DanzeffImeService.class.getDeclaredField("deviceListener"); listenerField.setAccessible(true);
+            ((android.hardware.input.InputManager.InputDeviceListener)listenerField.get(ime)).onInputDeviceRemoved(99);
+        } catch (ReflectiveOperationException error) { throw new AssertionError(error); }
         count = ime.editor.text.length(); shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1)); assertEquals(count, ime.editor.text.length());
         controller.destroy();
     }

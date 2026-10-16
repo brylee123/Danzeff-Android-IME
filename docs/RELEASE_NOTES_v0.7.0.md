@@ -4,7 +4,7 @@
 - Shared Light, Dark and System appearance, solid gray/amber surfaces and Google Sans typography.
 - Consistent page toolbars, back navigation and system-bar insets.
 - Native rendered Markdown for bundled help and credits, including headings, links, code blocks and tables.
-- Existing controller capture, profiles and typing features preserved.
+- Remove the controller face-button panel and its separate touch-mode toggle entirely. The full-width swipe/tap grid is always shown, including with a paired controller or keypad. Hardware mapping, capture and profiles remain available.
 
 Validation: Android debug build and lint completed; all 64 automated tests passed. Live emulator verification remains pending.
 

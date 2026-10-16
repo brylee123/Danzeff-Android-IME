@@ -99,15 +99,6 @@ public class KeyboardRenderingTest {
         tap(keyboard.view, 320, 191); assertEquals("1", keyboard.output.get(0));
         tap(keyboard.view, 660, 535); assertEquals(1, keyboard.picker);
     }
-    @Test public void controllerLayoutRetainsFaceButtonsAndTouchModeReturnsOnDisconnect() {
-        Keyboard keyboard = new Keyboard(); keyboard.view.setControllerConnected(true);
-        tap(keyboard.view, 120, 150); assertTrue(keyboard.output.isEmpty());
-        tap(keyboard.view, 555, 276); assertEquals("a", keyboard.output.get(0));
-        tap(keyboard.view, 660, 276); assertEquals("c", keyboard.output.get(1));
-        keyboard.view.setControllerConnected(false);
-        swipe(keyboard.view, 120, 150, 60, 150);
-        assertEquals("a", keyboard.output.get(2));
-    }
     @Test public void extraSymbolsSupportSwipeAndTwoTapAndKeepThePage() throws Exception {
         Keyboard keyboard = new Keyboard(); keyboard.layer = KeyboardLayout.EXTRA_SYMBOLS;
         keyboard.view.updateState(keyboard.layer, 1, 1);

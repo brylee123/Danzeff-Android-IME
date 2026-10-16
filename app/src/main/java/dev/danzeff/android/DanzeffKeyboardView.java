@@ -8,12 +8,12 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.Typeface;
-import android.util.SparseIntArray;
+
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 
-/** Touch: expand a locked group, then swipe or tap. Controller: original face panel. */
+/** One full-width grid for touch and hardware input. Touch expands a locked group for swipe or tap. */
 public final class DanzeffKeyboardView extends View {
     public interface Listener {
         void onChooseGroup(int row, int col);
@@ -25,19 +25,16 @@ public final class DanzeffKeyboardView extends View {
     private int BG, PANEL, CELL, WHITE, INK, AMBER, SECTOR, DIVIDER;
 
     private static final String[] FOOTER = {"?123", "⇧", "⌫", "SPACE", "↵", ""};
-    private static final String[] FACE_GLYPHS = {"△", "□", "×", "○"};
-    private static final int NONE = 0, GRID = 1, FACES = 2, HEADER = 3, FOOTER_ZONE = 4, POPUP = 5;
+    private static final int NONE = 0, GRID = 1, FOOTER_ZONE = 2, POPUP = 3;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path sector = new Path();
     private final Typeface regular = getResources().getFont(R.font.google_sans_regular);
     private final Typeface bold = getResources().getFont(R.font.google_sans_medium);
     private final Listener listener;
     private final SharedPreferences preferences;
-    private final SparseIntArray controllerPointers = new SparseIntArray();
     private final RectF grid = new RectF(), popup = new RectF();
-    private float headerHeight, footerHeight, bodyTop, bodyBottom, controlsLeft, controlsRight;
+    private float headerHeight, footerHeight, bodyTop, bodyBottom;
     private int layer, selectedRow = 1, selectedCol = 1;
-    private boolean controllerConnected, controllerDirect;
     private int expandedRow = -1, expandedCol = -1, activePointer = -1;
     private int touchZone, footerPressed = -1, swipeSlot = -1;
     private float downX, downY;
@@ -75,7 +72,6 @@ public final class DanzeffKeyboardView extends View {
     public DanzeffKeyboardView(Context context, Listener callback) {
         super(context); listener = callback;
         preferences = context.getSharedPreferences("danzeff_preferences", Context.MODE_PRIVATE);
-        controllerDirect = preferences.getBoolean("direct_touch", false);
         swipeThreshold = Math.max(d(14), ViewConfiguration.get(context).getScaledTouchSlop());
         setClickable(true); refreshAppearance();
     }
@@ -108,11 +104,6 @@ public final class DanzeffKeyboardView extends View {
     public void updateState(int newLayer, int row, int col) {
         layer = newLayer; selectedRow = row; selectedCol = col; invalidate();
     }
-    public void setControllerConnected(boolean connected) {
-        if (controllerConnected == connected) return;
-        controllerConnected = connected; resetTouchSelection(); controllerPointers.clear();
-        geometry(getWidth(), getHeight()); requestLayout(); invalidate();
-    }
     public void resetTouchSelection() {
         stopRepeat(); handlingFooter = false; footerPointer = -1;
         expandedRow = expandedCol = -1; activePointer = -1; swipeSlot = -1;
@@ -128,9 +119,7 @@ public final class DanzeffKeyboardView extends View {
     private void geometry(float width, float height) {
         headerHeight = d(39); footerHeight = d(56);
         bodyTop = headerHeight + d(5); bodyBottom = height - footerHeight - d(8);
-        float faceWidth = controllerConnected ? Math.min(d(150), Math.max(d(94), width * .27f)) : 0;
-        grid.set(d(8), bodyTop, controllerConnected ? width - faceWidth - d(17) : width - d(8), bodyBottom);
-        controlsLeft = grid.right + d(9); controlsRight = width - d(8);
+        grid.set(d(8), bodyTop, width - d(8), bodyBottom);
         if (expandedRow >= 0) popupGeometry();
     }
     @Override protected void onSizeChanged(int w, int h, int oldw, int oldh) {
@@ -167,13 +156,8 @@ public final class DanzeffKeyboardView extends View {
         super.onDraw(canvas); if (getWidth() <= 0 || getHeight() <= 0) return;
         geometry(getWidth(), getHeight());
         label(canvas, "DANZEFF", d(61), headerHeight / 2, 13, WHITE, true);
-        if (controllerConnected) {
-            box(canvas, PANEL, getWidth() * .43f, d(6), getWidth() - d(8), headerHeight - d(4), d(16));
-            label(canvas, controllerDirect ? "DIRECT TAP  ⇄" : "TWO-STEP  ⇄", (getWidth() * .43f + getWidth() - d(8)) / 2, headerHeight / 2, 11, WHITE, true);
-        } else {
-            String hint = swipeSlot >= 0 ? "RELEASE TO TYPE" : expandedRow >= 0 ? "SWIPE OR TAP A CHARACTER" : "HOLD & SWIPE · OR TAP";
-            label(canvas, hint, getWidth() * .67f, headerHeight / 2, 10, WHITE, false);
-        }
+        String hint = swipeSlot >= 0 ? "RELEASE TO TYPE" : expandedRow >= 0 ? "SWIPE OR TAP A CHARACTER" : "HOLD & SWIPE · OR TAP";
+        label(canvas, hint, getWidth() * .67f, headerHeight / 2, 10, WHITE, false);
         float cw = grid.width() / 3, ch = grid.height() / 3;
         for (int row = 0; row < 3; row++) for (int col = 0; col < 3; col++) {
             cellBounds.set(grid.left + col * cw + d(3), grid.top + row * ch + d(3),
@@ -186,9 +170,9 @@ public final class DanzeffKeyboardView extends View {
                 canvas.drawRoundRect(cellBounds, d(12), d(12), paint); paint.setStyle(Paint.Style.FILL);
             }
         }
-        if (controllerConnected) drawFaces(canvas);
+
         drawFooter(canvas);
-        if (!controllerConnected && expandedRow >= 0) drawPopup(canvas);
+        if (expandedRow >= 0) drawPopup(canvas);
     }
     private void drawPopup(Canvas canvas) {
         box(canvas, 0x99000000, grid, 0);
@@ -212,18 +196,6 @@ public final class DanzeffKeyboardView extends View {
         canvas.drawLine(popup.left + d(4), popup.bottom - d(4), popup.right - d(4), popup.top + d(4), paint);
         canvas.restoreToCount(popupSave);
         characters(canvas, popup, expandedRow, expandedCol, 22, INK);
-    }
-    private void drawFaces(Canvas canvas) {
-        float cx = (controlsLeft + controlsRight) / 2, cy = (bodyTop + bodyBottom) / 2;
-        float fw = controlsRight - controlsLeft, fh = bodyBottom - bodyTop;
-        float radius = Math.min(d(27), Math.min(fw * .25f, fh * .16f));
-        for (int slot = 0; slot < 4; slot++) {
-            float x = cx + (slot == 1 ? -fw * .26f : slot == 3 ? fw * .26f : 0);
-            float y = cy + (slot == 0 ? -fh * .29f : slot == 2 ? fh * .29f : 0);
-            paint.setColor(PANEL); canvas.drawCircle(x, y, radius, paint);
-            label(canvas, FACE_GLYPHS[slot], x, y - d(7), 17, AMBER, true);
-            label(canvas, displayCharacter(characterAt(selectedRow, selectedCol, slot)), x, y + d(12), 12, WHITE, true);
-        }
     }
     private void drawFooter(Canvas canvas) {
         float width = getWidth() / 6f, top = getHeight() - footerHeight + d(3), bottom = getHeight() - d(5);
@@ -253,9 +225,7 @@ public final class DanzeffKeyboardView extends View {
     }
     private int zone(float x, float y) {
         if (y >= getHeight() - footerHeight && y <= getHeight() && x >= 0 && x < getWidth()) return FOOTER_ZONE;
-        if (controllerConnected && y < headerHeight && x >= getWidth() * .43f) return HEADER;
         if (grid.contains(x, y)) return GRID;
-        if (controllerConnected && x >= controlsLeft && x <= controlsRight && y >= bodyTop && y <= bodyBottom) return FACES;
         return NONE;
     }
     private void expand(float x, float y) {
@@ -290,7 +260,6 @@ public final class DanzeffKeyboardView extends View {
             invalidate(); return true;
         }
         if (handlingFooter) return footerTouch(event);
-        if (controllerConnected) return controllerTouch(event);
         int action = event.getActionMasked();
         if (action == MotionEvent.ACTION_CANCEL) { resetAfterCharacter(); return true; }
         if (action == MotionEvent.ACTION_DOWN) {
@@ -360,30 +329,6 @@ public final class DanzeffKeyboardView extends View {
             if (commit) footerAction(pressed);
             invalidate(); performClick();
         }
-        return true;
-    }
-    private boolean controllerTouch(MotionEvent event) {
-        int action = event.getActionMasked(), index = event.getActionIndex();
-        if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
-            float x = event.getX(index), y = event.getY(index); int area = zone(x, y);
-            controllerPointers.put(event.getPointerId(index), area);
-            if (area == GRID) listener.onChooseGroup(cellRow(y), cellCol(x));
-        } else if (action == MotionEvent.ACTION_MOVE) {
-            for (int i = 0; i < event.getPointerCount(); i++) if (controllerPointers.get(event.getPointerId(i), NONE) == GRID && grid.contains(event.getX(i), event.getY(i)))
-                listener.onChooseGroup(cellRow(event.getY(i)), cellCol(event.getX(i)));
-        } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP) {
-            int started = controllerPointers.get(event.getPointerId(index), NONE);
-            float x = event.getX(index), y = event.getY(index); int ended = zone(x, y);
-            if (started == GRID && ended == GRID && controllerDirect) {
-                listener.onChooseGroup(cellRow(y), cellCol(x));
-                float cx = grid.left + (cellCol(x) + .5f) * grid.width() / 3, cy = grid.top + (cellRow(y) + .5f) * grid.height() / 3;
-                listener.onChooseSlot(direction((x - cx) / grid.width(), (y - cy) / grid.height()));
-            } else if (started == FACES && ended == FACES) listener.onChooseSlot(direction((x - (controlsLeft + controlsRight) / 2) / (controlsRight - controlsLeft), (y - (bodyTop + bodyBottom) / 2) / (bodyBottom - bodyTop)));
-            else if (started == HEADER && ended == HEADER) { controllerDirect = !controllerDirect; preferences.edit().putBoolean("direct_touch", controllerDirect).apply(); invalidate(); }
-            else if (started == FOOTER_ZONE && ended == FOOTER_ZONE) footerAction((int) (6 * x / getWidth()));
-            controllerPointers.delete(event.getPointerId(index));
-            if (action == MotionEvent.ACTION_UP) { controllerPointers.clear(); performClick(); }
-        } else if (action == MotionEvent.ACTION_CANCEL) controllerPointers.clear();
         return true;
     }
     @Override public boolean performClick() { super.performClick(); return true; }
